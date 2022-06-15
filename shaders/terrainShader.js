@@ -51,106 +51,6 @@ const terrainFragment = `
   uniform sampler2D uGrassNormal;
   uniform sampler2D noiseMap;
   uniform float uTime;
-  
-vec2 hash( vec2 p ) // replace this by something better
-{
-	p = vec2( dot(p,vec2(127.1,311.7)), dot(p,vec2(269.5,183.3)) );
-	return -1.0 + 2.0*fract(sin(p)*43758.5453123);
-}
-
-float noise( in vec2 p )
-{
-    const float K1 = 0.366025404; // (sqrt(3)-1)/2;
-    const float K2 = 0.211324865; // (3-sqrt(3))/6;
-
-	vec2  i = floor( p + (p.x+p.y)*K1 );
-    vec2  a = p - i + (i.x+i.y)*K2;
-    float m = step(a.y,a.x); 
-    vec2  o = vec2(m,1.0-m);
-    vec2  b = a - o + K2;
-	vec2  c = a - 1.0 + 2.0*K2;
-    vec3  h = max( 0.5-vec3(dot(a,a), dot(b,b), dot(c,c) ), 0.0 );
-	vec3  n = h*h*h*h*vec3( dot(a,hash(i+0.0)), dot(b,hash(i+o)), dot(c,hash(i+1.0)));
-    return dot( n, vec3(70.0) );
-}
-
-float fbm( vec2 p )
-{
-    float f = 0.0;
-    float gat = 0.0;
-    
-    for (float octave = 0.; octave < 8.; ++octave)
-    {
-        float la = pow(2.0, octave);
-        float ga = pow(0.5, octave + 1.);
-        f += ga*noise( la * p ); 
-        gat += ga;
-    }
-    
-    f = f/gat;
-    
-    return f;
-}
-
-float warpNoise(vec3 pos)
-{
-    vec2 p = pos.xz;
-    vec2 q = vec2(fbm(p),fbm(p + vec2(5.2, 1.3)));
-    // vec2 r = vec2(fbm(p + q * 2.0 + vec2(10.7, 9.2)) , (fbm(p + q*2.0) + vec2(8.3, 2.8)));
-    return fbm(p + q); 
-}
-
-vec3 getNormalFromHeight(vec3 h){
-
-  return normalize(-vec3(dFdx(h.x), dFdy(h.y),dFdx(h.z)));
-} 
-  
-#define saturate(a) clamp( a, 0.0, 1.0 )
-float sum( vec3 v ) { return v.x+v.y+v.z; }
-vec3 ACESFilmicToneMapping(vec3 x) {
-  float a = 2.51;
-  float b = 0.03;
-  float c = 2.43;
-  float d = 0.59;
-  float e = 0.14;
-  return saturate((x*(a*x+b))/(x*(c*x+d)+e));
-}
-vec4 calculateLighting(
-    vec3 lightDirection, vec3 lightColour, vec3 worldSpaceNormal, vec3 viewDirection) {
-  float diffuse = saturate(dot(worldSpaceNormal, lightDirection));
-  vec3 H = normalize(lightDirection + viewDirection);
-  float NdotH = dot(worldSpaceNormal, H);
-  float specular = saturate(pow(NdotH, 8.0));
-  return vec4(lightColour * (diffuse + diffuse * specular), 0);
-}
-vec4 computeLighting(vec3 worldSpaceNormal, vec3 sunDir, vec3 viewDirection) {
-  // Hardcoded, whee!
-  vec4 lighting;
-  
-  lighting += calculateLighting(
-      sunDir, vec3(1.25, 1.25, 1.25), worldSpaceNormal, viewDirection);
-  lighting += calculateLighting(
-      -sunDir, vec3(0.75, 0.75, 1.0), worldSpaceNormal, viewDirection);
-  lighting += calculateLighting(
-      vec3(0, 1, 0), vec3(0.25, 0.25, 0.25), worldSpaceNormal, viewDirection);
-  
-  return lighting;
-}
-
-  vec4 texture_UV(in sampler2DArray srcTexture, in vec3 x) {
-    float k = texture(noiseMap, 0.0025*x.xy).x; // cheap (cache friendly) lookup
-    float l = k*8.0;
-    float f = fract(l);
-    
-    float ia = floor(l+0.5);
-    float ib = floor(l);
-    f = min(f, 1.0-f)*2.0;
-    vec2 offa = sin(vec2(3.0,7.0)*ia); // can replace with any other hash
-    vec2 offb = sin(vec2(3.0,7.0)*ib); // can replace with any other hash
-    vec4 cola = texture(srcTexture, vec3(x.xy + offa, x.z));
-    vec4 colb = texture(srcTexture, vec3(x.xy + offb, x.z));
-    return mix(cola, colb, smoothstep(0.2,0.8,f-0.1*sum(cola.xyz-colb.xyz)));
-  }
 
 
   vec4 triplanarTexture(sampler2D inputTexture , float scale , float blendSharpness){
@@ -217,16 +117,25 @@ vec4 computeLighting(vec3 worldSpaceNormal, vec3 sunDir, vec3 viewDirection) {
 }
 
   void setBiome(int biome, out vec4 diffuseSample,out vec4 normalSample){
-    if(biome == 4){
-      float rockNoise = warpNoise(vPosition/10.0);
-      vec4 rockColor = vec4(vec3(0.36 , 0.2 , 0.06)*(.5 + rockNoise) , 1.);
-      vec3 rockNormal = getNormalFromHeight(vPosition + vNormal * rockNoise);
-
-      diffuseSample = rockColor;
-      normalSample = vec4(rockNormal,1.);
-    }else{
+    if(biome == 1){
+      diffuseSample = vec4(0.5, 0.1 , 0.69, 1.);
+      normalSample = vec4(1,1,1,1.);
+    } 
+    else if(biome == 4){
+      diffuseSample = vec4(vec3(0.36 , 0.2 , 0.06);
+      normalSample = vec4(1,1,1,1.);
+    }
+    else if(biome == 18){
+      diffuseSample = vec4(0.1, 0.9 , 0.1, 1.);
+      normalSample = vec4(1,1,1,1.);
+    }
+    else if(biome == 61){
+      diffuseSample = vec4(0.1, 0.4 , 0.9, 1.);
+      normalSample = vec4(1,1,1,1.);
+    }
+    else{
       // default color is red
-      diffuseSample = vec4(1, 0 , 0, 1.);
+      diffuseSample = vec4(1, 0.1 , 0.1, 1.);
       normalSample = vec4(1,1,1,1.);
     }
   
@@ -250,9 +159,7 @@ vec4 computeLighting(vec3 worldSpaceNormal, vec3 sunDir, vec3 viewDirection) {
     vec4 normalBlended = terrainBlend(normalSamples,vec4(1));
 
     vec3 worldSpaceNormal = normalize(normalBlended.xyz);
-    vec4 lighting = computeLighting(worldSpaceNormal, sunDir, -eyeDirection);
     vec4 finalColor = diffuseBlended;
-    finalColor.rgb *= lighting.xyz;
     gl_FragColor = finalColor;
   ${THREE.ShaderChunk.logdepthbuf_fragment}
   }
