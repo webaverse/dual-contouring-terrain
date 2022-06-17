@@ -2,6 +2,10 @@ import metaversefile from 'metaversefile';
 import * as THREE from 'three';
 import { terrainVertex, terrainFragment } from './shaders/terrainShader.js';
 import biomeSpecs from './biomes.js';
+import {
+  fireParticlesFragment,
+  fireParticlesVertex,
+} from './shaders/fireParticles.js';
 
 const {
   useApp,
@@ -13,6 +17,7 @@ const {
   useInstancing,
   useDcWorkerManager,
   useLodder,
+  useInternals,
 } = metaversefile;
 
 const baseUrl = import.meta.url.replace(/(\/)[^\/\\]*$/, '$1');
@@ -20,7 +25,7 @@ const baseUrl = import.meta.url.replace(/(\/)[^\/\\]*$/, '$1');
 let terrainMaterial,
   cloudGeo,
   cloudMaterial,
-  cloudArray = [];
+  particleArray = [];
 
 const localVector = new THREE.Vector3();
 const localVector2 = new THREE.Vector3();
@@ -233,6 +238,16 @@ class TerrainMesh extends BatchedMesh {
     );
     earthTexture.wrapS = earthTexture.wrapT = THREE.RepeatWrapping;
     earthTexture.encoding = THREE.sRGBEncoding;
+    const earthTexture2 = textureLoader.load(
+      baseUrl + 'assets/textures/rock2_BaseColor.png'
+    );
+    earthTexture2.wrapS = earthTexture2.wrapT = THREE.RepeatWrapping;
+    earthTexture2.encoding = THREE.sRGBEncoding;
+    const earthTexture3 = textureLoader.load(
+      baseUrl + 'assets/textures/rock3_BaseColor.png'
+    );
+    earthTexture3.wrapS = earthTexture3.wrapT = THREE.RepeatWrapping;
+    earthTexture3.encoding = THREE.sRGBEncoding;
     const earthNormal = textureLoader.load(
       baseUrl + 'assets/textures/SinglePlane_DefaultMaterial_Normal.png'
     );
@@ -253,6 +268,14 @@ class TerrainMesh extends BatchedMesh {
 
         shader.uniforms.uEarthBaseColor = {
           value: earthTexture,
+          needsUpdate: true,
+        };
+        shader.uniforms.uEarthBaseColor2 = {
+          value: earthTexture2,
+          needsUpdate: true,
+        };
+        shader.uniforms.uEarthBaseColor3 = {
+          value: earthTexture3,
           needsUpdate: true,
         };
         shader.uniforms.uEarthNormal = {
@@ -328,6 +351,8 @@ class TerrainMesh extends BatchedMesh {
       #endif
       uniform float uTime;
       uniform sampler2D uEarthBaseColor;
+      uniform sampler2D uEarthBaseColor2;
+      uniform sampler2D uEarthBaseColor3;
       uniform sampler2D uEarthNormal;
       uniform sampler2D uGrassBaseColor;
 
@@ -390,7 +415,7 @@ float fbm(vec2 x) {
 
 float warpNoise(vec3 pos)
 {
-    return fbm(pos.xz+ vec2(100.2, 1.3)); 
+    return noise(pos.xz+ vec2(100.2, 1.3)); 
 }
 
 
@@ -458,53 +483,32 @@ float warpNoise(vec3 pos)
 }
 
   void setBiome(int biome, out vec4 diffuseSample, out vec4 normalSample){
-    if(0 <= biome && biome <= 14 ){
+    if(0 <= biome && biome <= 9 ){
       // rocky ground 2
-      diffuseSample = texture2D( uEarthBaseColor , vWorldPosition.xz/10.0);
-      normalSample = texture2D( uEarthNormal , vWorldPosition.xz/10.0);
+      float rockNoise = clamp(noise(vWorldPosition.xz/100.0+ vec2(100.2, 1.3))*2.0,0.,1.);
+      vec4 diffuseSample1 = texture2D( uEarthBaseColor , vWorldPosition.xz/10.0) * rockNoise;
+      vec4 diffuseSample2 = texture2D( uEarthBaseColor3 , vWorldPosition.xz/10.0) * (1. - rockNoise);
+      diffuseSample += diffuseSample1;
+      diffuseSample += diffuseSample2;
+      // diffuseSample = rockNoise;
+      normalSample =  vec4(1.);
+      // normalSample = texture2D( uEarthNormal , vWorldPosition.xz/10.0);
     }
-    else if(15 <= biome && biome <= 49 ){
-      float groundNoise = noise(vWorldPosition.xz/30.0)*30.0;
-      vec4 diffuseGround = texture2D( uEarthBaseColor , vWorldPosition.xz/10.0);
-      vec4 normalGround = texture2D( uEarthNormal , vWorldPosition.xz/10.0);
-
-      float time = -uTime/70000.0;
-      vec2 fakeUv = vWorldPosition.xz/5.0;
-    float f = fbm(vec2(time)+fakeUv + fbm(vec2(time)-fakeUv));
-
-    float r = smoothstep(.0, 0.4, f);
-    float g = smoothstep(.3, 0.7, f);
-    float b = smoothstep(.6, 1., f);
-    
-    vec3 marble = vec3(r, g, b);
-    float f2 = .5 - f;
-    
-	  r = smoothstep(.7, 1. , f2);
-    g = smoothstep(.8, 0.9, f2);
-    b = smoothstep(.85, 0.9, f2);
-    
-      vec3 col2 = vec3(r, g, b);    
-      marble = mix(marble, col2, f2) * vec3(1.,0.8,0.8);
-
-
-      diffuseSample += vec4(marble,1.0)*groundNoise;
-      diffuseSample += diffuseGround*(1. - groundNoise);
-      normalSample = vec4(1,1,1,1);
+   else if(10 <= biome && biome <= 29 ){
+      diffuseSample = texture2D( uEarthBaseColor2 , vWorldPosition.xz/10.0);
+      normalSample =  vec4(1.);
     }
-    else if(80 <= biome && biome <= 255){
-      float rockNoise = warpNoise(vWorldPosition/10.0);
-      vec4 rockColor = vec4(vec3(1.5 , 0.6 , 0.2)*(rockNoise+0.3) , 1.)*texture2D( uEarthBaseColor , vWorldPosition.xy/30.0);
-      diffuseSample = rockColor;
-      normalSample = vec4(1.);
-
+   else if(30 <= biome && biome <= 59 ){
+      diffuseSample = texture2D( uEarthBaseColor3 , vWorldPosition.xz/10.0);
+      normalSample =  vec4(1.);
     }
-    else if(50 <= biome && biome <= 79 ){
+    else if(60 <= biome && biome <= 79 ){
       // mountains tunnel 
-      float time = -uTime/100000.0;
+      float time = -uTime/70000.0;
       vec2 fakeUv = vWorldPosition.xz/15.0;
     float f = fbm(vec2(time)+fakeUv + fbm(vec2(time)-fakeUv));
 
-    float r = smoothstep(.0, 0.4, f);
+    float r = smoothstep(.0, 0.5, f);
     float g = smoothstep(.3, 0.7, f);
     float b = smoothstep(.6, 1., f);
     
@@ -512,13 +516,19 @@ float warpNoise(vec3 pos)
     float f2 = .5 - f;
     
 	  r = smoothstep(.7, 1. , f2);
-    g = smoothstep(.75, 0.92, f2);
-    b = smoothstep(.75, 0.92, f2);
+    g = smoothstep(.85, 0.95, f2);
+    b = smoothstep(.85, 0.95, f2);
     
       vec3 col2 = vec3(r, g, b);    
-      marble = mix(marble, col2, f2) * vec3(1.,0.5,0.2);
+      marble = mix(marble, col2, f2) * vec3(1.,0.6,0.2);
       diffuseSample = vec4(marble,1.0);
       normalSample = vec4(1,1,1,1);
+    }
+    else if(80 <= biome && biome <= 255){
+      float rockNoise = noise(vWorldPosition.xz/10.0);
+      vec4 rockColor = vec4(vec3(1.5 , 0.6 , 0.2)*(rockNoise+0.3) , 1.)*texture2D( uEarthBaseColor3 , vWorldPosition.xy/30.0);
+      diffuseSample = rockColor;
+      normalSample = vec4(1.);
     }
     else{
       // default color is red
@@ -942,6 +952,7 @@ export default (e) => {
   const app = useApp();
   const physics = usePhysics();
   const { LodChunkTracker } = useLodder();
+  const gl = useInternals().renderer;
 
   app.name = 'dual-contouring-terrain';
 
@@ -960,11 +971,7 @@ export default (e) => {
       const addClouds = (pos, material, array) => {
         for (let p = 0; p < 20; p++) {
           const cloud = new THREE.Mesh(cloudGeo, material);
-          cloud.position.set(
-            Math.random() * 2 - 1,
-            12.5,
-            Math.random() * 2 - 2
-          );
+          cloud.position.set(Math.random() * 2 - 1, 0, Math.random() * 2 - 2);
           cloud.position.x += pos[0];
           cloud.position.y += pos[1];
           cloud.position.z += pos[2];
@@ -972,17 +979,55 @@ export default (e) => {
           // cloud.rotation.y = -0.12
           // cloud.rotation.x = 1.16
           cloud.rotation.z = Math.random() * 2 * Math.PI;
-          cloud.material.opacity = 0.35;
+          cloud.material.opacity = 0.6;
           array.push(cloud);
           cloud.updateMatrixWorld();
           // cloud.layers.toggle(BLOOM_SCENE)
           app.add(cloud);
         }
       };
-      addClouds([4, 44, 4], cloudMaterial, cloudArray);
-      addClouds([-4, 44, 4], cloudMaterial, cloudArray);
-      addClouds([1, 44, 4], cloudMaterial, cloudArray);
-      addClouds([-5, -44, 4], cloudMaterial, cloudArray);
+      addClouds([2, 55, 2], cloudMaterial, particleArray);
+      addClouds([-2, 56, 2], cloudMaterial, particleArray);
+      addClouds([1, 57, 1], cloudMaterial, particleArray);
+      addClouds([-2, 54, -2], cloudMaterial, particleArray);
+
+      const fireGeometry = new THREE.SphereGeometry(5, 10, 10);
+
+      const particleTextures = [
+        'assets/textures/fire_01.png',
+        'assets/textures/circle_05.png',
+        'assets/textures/trace_03.png',
+        'assets/textures/trace_04.png',
+      ];
+
+      const addFire = (pos, size, array) => {
+        const fireMaterial = new THREE.PointsMaterial({
+          blending: THREE.AdditiveBlending,
+          transparent: true,
+          color: '#cc1400',
+          size: 0.2 + size,
+          map: new THREE.TextureLoader().load(
+            baseUrl +
+              particleTextures[
+                Math.floor(Math.random() * particleTextures.length)
+              ]
+          ),
+        });
+        const fire = new THREE.Points(fireGeometry, fireMaterial);
+        fire.position.x += pos[0];
+        fire.position.y += pos[1] + 65;
+        fire.position.z += pos[2];
+        fire.scale.set(1 + Math.random(), 1 + Math.random(), 1 + Math.random());
+        fire.updateMatrixWorld();
+        app.add(fire);
+        array.push(fire);
+      };
+      addFire([2 / 2, 54, -1 / 2], 0.165, particleArray);
+      addFire([-1 / 2, 56, 4 / 2], 0.1, particleArray);
+      addFire([1 / 2, 59, -4 / 2], 0.135, particleArray);
+      addFire([1.5 / 2, 53, -2 / 2], 0.05, particleArray);
+      addFire([3 / 2, 58, 1.5 / 2], 0.05, particleArray);
+      addFire([1 / 2, 56, 2 / 2], 0.21, particleArray);
     }
   );
 
@@ -1105,9 +1150,23 @@ export default (e) => {
       if (shader) {
         shader.uniforms.uTime.value = timestamp;
       }
-      cloudArray.forEach((cloud) => {
-        cloud.rotation.z += timestamp / 10000000;
-        cloud.updateMatrixWorld();
+      // smoke and fire particles
+      particleArray.forEach((particle) => {
+        if (particle.position.y > 65) {
+          particle.position.y = 40;
+          particle.updateMatrixWorld();
+          particle.material.opacity = 0.6;
+          if (particle.material.size) {
+            particle.material.size = 0.2 + Math.random() / 9;
+          }
+        }
+        particle.rotation.z = Math.sin(timestamp / 100000) * 4;
+        particle.position.y += 0.02;
+        particle.material.opacity -= 0.0001;
+        if (particle.material.size) {
+          // particle.material.size -= 0.000001;
+        }
+        particle.updateMatrixWorld();
       });
     }
     // console.log(timestamp);
