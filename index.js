@@ -851,34 +851,32 @@ class TerrainChunkGenerator {
       chunk.binding = null;
     }
   }
-  relodChunk(oldChunk, newChunk) {
+  async relodChunk(oldChunk, newChunk) {
     // console.log('relod chunk', oldChunk, newChunk);
 
-    (async () => {
-      try {
-        const oldAbortController = oldChunk.binding.abortController;
-        const newSignal = this.bindChunk(newChunk);
+    try {
+      const oldAbortController = oldChunk.binding.abortController;
+      const newSignal = this.bindChunk(newChunk);
 
-        const abortOldChunk = (e) => {
-          oldAbortController.abort(abortError);
-        };
-        newSignal.addEventListener('abort', abortOldChunk);
+      const abortOldChunk = (e) => {
+        oldAbortController.abort(abortError);
+      };
+      newSignal.addEventListener('abort', abortOldChunk);
 
-        const renderData = await this.terrainMesh.getChunkRenderData(
-          newChunk,
-          newSignal
-        );
+      const renderData = await this.terrainMesh.getChunkRenderData(
+        newChunk,
+        newSignal
+      );
 
-        newSignal.removeEventListener('abort', abortOldChunk);
+      newSignal.removeEventListener('abort', abortOldChunk);
 
-        this.disposeChunk(oldChunk);
-        this.terrainMesh.drawChunk(newChunk, renderData, newSignal);
-      } catch (err) {
-        if (err !== abortError) {
-          console.warn(err);
-        }
+      this.disposeChunk(oldChunk);
+      this.terrainMesh.drawChunk(newChunk, renderData, newSignal);
+    } catch (err) {
+      if (err !== abortError) {
+        console.warn(err);
       }
-    })();
+    }
   }
 
   bindChunk(chunk) {
