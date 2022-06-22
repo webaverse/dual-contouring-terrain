@@ -650,7 +650,7 @@ float roughnessFactor = roughness;
   }
   async getChunkRenderData(chunk, signal) {
     const meshData =
-      await this.procGenInstance.dcWorkerManager.generateChunkRenderable(
+      await this.procGenInstance.dcWorkerManager.generateTerrainChunkRenderable(
         chunk,
         chunk.lodArray,
         {
