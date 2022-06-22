@@ -695,7 +695,7 @@ float roughnessFactor = roughness;
           dstIndices[dstOffset + i] = srcIndices[i] + positionIndex;
         }
       };
-      const _renderMeshDataToGeometry = (
+      const _renderTerrainMeshDataToGeometry = (
         meshData,
         geometry,
         geometryBinding
@@ -754,7 +754,7 @@ float roughnessFactor = roughness;
           meshData.indices.length,
           localSphere
         );
-        _renderMeshDataToGeometry(
+        _renderTerrainMeshDataToGeometry(
           meshData,
           this.allocator.geometry,
           geometryBinding
