@@ -846,7 +846,7 @@ class TerrainChunkGenerator {
   disposeChunk(chunk) {
     const binding = chunk.binding;
     if (binding) {
-      const { abortController } = binding;
+      const {abortController} = binding;
       abortController.abort(abortError);
 
       chunk.binding = null;
@@ -882,7 +882,7 @@ class TerrainChunkGenerator {
 
   bindChunk(chunk) {
     const abortController = new AbortController();
-    const { signal } = abortController;
+    const {signal} = abortController;
 
     chunk.binding = {
       abortController,
@@ -892,7 +892,7 @@ class TerrainChunkGenerator {
   }
 
   async hit(e, tracker) {
-    const { LodChunk } = useLodder();
+    const {LodChunk} = useLodder();
 
     // perform damage
     const hitPosition = localVector
