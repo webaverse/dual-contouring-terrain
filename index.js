@@ -235,6 +235,11 @@ class TerrainMesh extends BatchedMesh {
     grassNormal.wrapS = grassNormal.wrapT = THREE.RepeatWrapping */
 
     const lightMapper = procGenInstance.getLightMapper();
+    lightMapper.addEventListener('update', e => {
+      const {coord} = e.data;
+      material.uniforms.uLightBasePosition.value.copy(coord);
+      material.uniforms.uLightBasePosition.needsUpdate = true;
+    });
 
     const material = new THREE.MeshStandardMaterial({
       map: new THREE.Texture(),
@@ -628,7 +633,7 @@ float roughnessFactor = roughness;
         needsUpdate: true,
       };
       uniforms.uTerrainSize = {
-        value: terrainSize, // XXX needs to be range-aware
+        value: terrainSize,
         needsUpdate: true,
       };
 
@@ -787,12 +792,8 @@ float roughnessFactor = roughness;
     }
   }
   updateCoord(min2xCoord) {
-    if (this.lightMapper.updateCoord(min2xCoord)) {
-      this.material.uniforms.uLightBasePosition.value.copy(
-        this.lightMapper.lightBasePosition
-      );
-      this.material.uniforms.uLightBasePosition.needsUpdate = true;
-    }
+    // XXX this should be done in a separate app
+    this.lightMapper.updateCoord(min2xCoord);
   }
 }
 
