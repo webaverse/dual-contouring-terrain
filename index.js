@@ -875,7 +875,7 @@ class TerrainChunkGenerator {
       this.disposeChunk(oldChunk);
       this.terrainMesh.drawChunk(newChunk, renderData, newSignal);
     } catch (err) {
-      if (err !== abortError) {
+      if (!err?.isAbortError) {
         console.warn(err);
       }
     }
