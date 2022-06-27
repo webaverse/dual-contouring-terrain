@@ -38,7 +38,7 @@ const procGenManager = useProcGenManager();
 const chunkWorldSize = procGenManager.chunkSize;
 const terrainSize = chunkWorldSize * 4;
 const chunkRadius = Math.sqrt(chunkWorldSize * chunkWorldSize * 3);
-const numLods = 1;
+const numLods = 2;
 const bufferSize = 20 * 1024 * 1024;
 
 // const textureLoader = new THREE.TextureLoader();
@@ -587,6 +587,7 @@ float roughnessFactor = roughness;
 
 // lighting
 {
+  // diffuseColor.rgb *= 0.3 + 0.7 * vLightValue;
   diffuseColor.rgb *= vLightValue;
   diffuseColor.a = 1.;
 }
@@ -853,26 +854,33 @@ class TerrainChunkGenerator {
       chunk.binding = null;
     }
   }
-  async relodChunk(oldChunk, newChunk) {
+  async relodChunks(oldChunks, newChunk) {
     // console.log('relod chunk', oldChunk, newChunk);
 
     try {
-      const oldAbortController = oldChunk.binding.abortController;
+      const oldAbortControllers = oldChunks.map(oldChunk => {
+        return oldChunk.binding.abortController;
+      });
+      // const oldAbortController = oldChunk.binding.abortController;
       const newSignal = this.bindChunk(newChunk);
 
-      const abortOldChunk = (e) => {
-        oldAbortController.abort(abortError);
+      const abortOldChunks = e => {
+        for (const oldAbortController of oldAbortControllers) {
+          oldAbortController.abort(abortError);
+        }
       };
-      newSignal.addEventListener('abort', abortOldChunk);
+      newSignal.addEventListener('abort', abortOldChunks);
 
       const renderData = await this.terrainMesh.getChunkRenderData(
         newChunk,
         newSignal
       );
 
-      newSignal.removeEventListener('abort', abortOldChunk);
+      newSignal.removeEventListener('abort', abortOldChunks);
 
-      this.disposeChunk(oldChunk);
+      for (const oldChunk of oldChunks) {
+        this.disposeChunk(oldChunk);
+      }
       this.terrainMesh.drawChunk(newChunk, renderData, newSignal);
     } catch (err) {
       if (!err?.isAbortError) {
@@ -1105,8 +1113,8 @@ export default (e) => {
     generator.disposeChunk(chunk);
   };
   const chunkrelod = (e) => {
-    const {oldChunk, newChunk} = e.data;
-    generator.relodChunk(oldChunk, newChunk);
+    const {oldChunks, newChunk} = e.data;
+    generator.relodChunks(oldChunks, newChunk);
   };
 
   useFrame(() => {
