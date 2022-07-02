@@ -2,7 +2,7 @@ import metaversefile from 'metaversefile';
 // import { useSyncExternalStore } from 'react';
 import * as THREE from 'three';
 // import { terrainVertex, terrainFragment } from './shaders/terrainShader.js';
-import biomeSpecs from './biomes.js';
+import {texturesPerRow, biomeUvDataTexture} from './biomes.js';
 
 const {
   useApp,
@@ -23,14 +23,10 @@ const {
 
 const localVector = new THREE.Vector3();
 const localVector2 = new THREE.Vector3();
-// const localVector3 = new THREE.Vector3();
-// const localVector4 = new THREE.Vector3();
 const localQuaternion = new THREE.Quaternion();
 const localMatrix = new THREE.Matrix4();
 const localMatrix2 = new THREE.Matrix4();
-// const localColor = new THREE.Color();
 const localSphere = new THREE.Sphere();
-// const localBox = new THREE.Box3();
 
 // const zeroVector = new THREE.Vector3();
 
@@ -41,7 +37,6 @@ const chunkRadius = Math.sqrt(chunkWorldSize * chunkWorldSize * 3);
 const numLods = 2;
 const bufferSize = 20 * 1024 * 1024;
 
-// const textureLoader = new THREE.TextureLoader();
 const abortError = new Error('chunk disposed');
 abortError.isAbortError = true;
 const fakeMaterial = new THREE.MeshBasicMaterial({
@@ -63,125 +58,7 @@ const mapNames = [
   'Emissive',
   'Ambient_Occlusion',
 ];
-const biomesPngTexturePrefix = `/images/stylized-textures/png/`;
 const biomesKtx2TexturePrefix = `/images/land-textures/`;
-const neededTexturePrefixes = (() => {
-  const neededTexturePrefixesSet = new Set();
-  for (const biomeSpec of biomeSpecs) {
-    const [name, colorHex, textureName] = biomeSpec;
-    neededTexturePrefixesSet.add(textureName);
-  }
-  const neededTexturePrefixes = Array.from(neededTexturePrefixesSet);
-  return neededTexturePrefixes;
-})();
-const texturesPerRow = Math.ceil(Math.sqrt(neededTexturePrefixes.length));
-
-const loadImage = (u) =>
-  new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => {
-      resolve(img);
-    };
-    img.onerror = (err) => {
-      if (/Emissive/i.test(u)) {
-        const blankCanvas = document.createElement('canvas');
-        blankCanvas.width = 1;
-        blankCanvas.height = 1;
-        resolve(blankCanvas);
-      } else {
-        reject(err);
-      }
-    };
-    img.crossOrigin = 'Anonymous';
-    img.src = u;
-  });
-function downloadFile(file, filename) {
-  const blobURL = URL.createObjectURL(file);
-  const tempLink = document.createElement('a');
-  tempLink.style.display = 'none';
-  tempLink.href = blobURL;
-  tempLink.setAttribute('download', filename);
-
-  document.body.appendChild(tempLink);
-  tempLink.click();
-  document.body.removeChild(tempLink);
-}
-// this method generates a deduplicted texture atlas for the texture sets used in the mesh
-// the output can be used by ./scripts/build-megatexture-atlas.sh to turn it into a KTX2 texture atlas
-const bakeBiomesAtlas = async ({ size = 8 * 1024 } = {}) => {
-  const atlasTextures = [];
-  const textureTileSize = size / texturesPerRow;
-  const halfTextureTileSize = textureTileSize / 2;
-
-  for (const mapName of mapNames) {
-    const neededTextureNames = neededTexturePrefixes.map(
-      (prefix) => `${prefix}${mapName}`
-    );
-
-    const canvas = document.createElement('canvas');
-    canvas.width = size;
-    canvas.height = size;
-    const ctx = canvas.getContext('2d');
-
-    document.body.appendChild(canvas);
-    canvas.style.cssText = `\
-      position: fixed;
-      top: 0;
-      left: 0;
-      z-index: 100;
-      width: 1024px;
-      height: 1024px;
-    `;
-
-    let index = 0;
-    for (const textureName of neededTextureNames) {
-      const x = index % texturesPerRow;
-      const y = Math.floor(index / texturesPerRow);
-
-      const u = biomesPngTexturePrefix + textureName + '.png';
-      const img = await loadImage(u);
-      console.log('load u', u, textureName, img.width, img.height);
-
-      for (let dy = 0; dy < 2; dy++) {
-        for (let dx = 0; dx < 2; dx++) {
-          ctx.drawImage(
-            img,
-            x * textureTileSize + halfTextureTileSize * dx,
-            y * textureTileSize + halfTextureTileSize * dy,
-            halfTextureTileSize,
-            halfTextureTileSize
-          );
-        }
-      }
-      atlasTextures.push({
-        name: textureName,
-        uv: [
-          (x * textureTileSize) / size,
-          (y * textureTileSize) / size,
-          ((x + 1) * textureTileSize) / size,
-          ((y + 1) * textureTileSize) / size,
-        ],
-      });
-
-      index++;
-    }
-
-    const canvasBlob = await new Promise((resolve, reject) => {
-      canvas.toBlob(resolve, 'image/png');
-    });
-    downloadFile(canvasBlob, `${mapName}.png`);
-
-    document.body.removeChild(canvas);
-  }
-
-  // const atlasJson = {
-  //   textures: atlasTextures,
-  // };
-  // const atlasJsonString = JSON.stringify(atlasJson, null, 2);
-  // const atlasJsonBlob = new Blob([atlasJsonString], {type: 'application/json'});
-  // downloadFile(atlasJsonBlob, `megatexture-atlas.json`);
-};
-// window.bakeBiomesAtlas = bakeBiomesAtlas;
 
 const { BatchedMesh, GeometryAllocator } = useInstancing();
 class TerrainMesh extends BatchedMesh {
@@ -1000,34 +877,7 @@ export default (e) => {
   let tracker = null;
   e.waitUntil(
     (async () => {
-      // this small texture maps biome indexes in the geometry to biome uvs in the atlas texture
-      const biomeUvDataTexture = (() => {
-        const data = new Uint8Array(256 * 4);
-        for (let i = 0; i < biomeSpecs.length; i++) {
-          const biomeSpec = biomeSpecs[i];
-          const [name, colorHex, textureName] = biomeSpec;
-
-          const biomeAtlasIndex = neededTexturePrefixes.indexOf(textureName);
-          if (biomeAtlasIndex === -1) {
-            throw new Error('no such biome: ' + textureName);
-          }
-
-          const x = biomeAtlasIndex % texturesPerRow;
-          const y = Math.floor(biomeAtlasIndex / texturesPerRow);
-
-          data[i * 4] = (x / texturesPerRow) * 255;
-          data[i * 4 + 1] = (y / texturesPerRow) * 255;
-          data[i * 4 + 2] = 0;
-          data[i * 4 + 3] = 255;
-        }
-        const texture = new THREE.DataTexture(data, 256, 1, THREE.RGBAFormat);
-        texture.minFilter = THREE.NearestFilter;
-        texture.magFilter = THREE.NearestFilter;
-        texture.needsUpdate = true;
-        return texture;
-      })();
-
-      const { ktx2Loader } = useLoaders();
+      const {ktx2Loader} = useLoaders();
       const atlasTexturesArray = await Promise.all(
         mapNames.map(
           (mapName) =>
