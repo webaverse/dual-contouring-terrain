@@ -672,9 +672,9 @@ float roughnessFactor = roughness;
       _handlePhysics();
     }
   }
-  updateCoord(min2xCoord) {
+  updateCoord(min1xCoord) {
     // XXX this should be done in a separate app
-    this.lightMapper.updateCoord(min2xCoord);
+    this.lightMapper.updateCoord(min1xCoord);
   }
 }
 
