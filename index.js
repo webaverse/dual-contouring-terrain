@@ -708,8 +708,7 @@ float roughnessFactor = roughness;
         let positionOffset = geometryBinding.getAttributeOffset('position');
         let normalOffset = geometryBinding.getAttributeOffset('normal');
         let biomesOffset = geometryBinding.getAttributeOffset('biomes');
-        let biomesWeightsOffset =
-          geometryBinding.getAttributeOffset('biomesWeights');
+        let biomesWeightsOffset = geometryBinding.getAttributeOffset('biomesWeights');
         let indexOffset = geometryBinding.getIndexOffset();
 
         _mapOffsettedIndices(
