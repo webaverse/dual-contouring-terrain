@@ -235,9 +235,12 @@ class TerrainMesh extends BatchedMesh {
     )
     grassNormal.wrapS = grassNormal.wrapT = THREE.RepeatWrapping */
 
-    const lightMapper = procGenInstance.getLightMapper();
-    lightMapper.addEventListener('update', e => {
+    const lightMapper = procGenInstance.getLightMapper({
+      // debug: true,
+    });
+    lightMapper.addEventListener('coordupdate', e => {
       const {coord} = e.data;
+      // console.log('coord update', coord.toArray().join(','));
       material.uniforms.uLightBasePosition.value.copy(coord);
       material.uniforms.uLightBasePosition.needsUpdate = true;
     });
@@ -1065,6 +1068,7 @@ export default (e) => {
         numLods,
         trackY: true,
         relod: true,
+        // debug: true,
       });
       // tracker.name = 'terrain';
       /* tracker = new LodChunkTracker(generator, {
@@ -1080,7 +1084,7 @@ export default (e) => {
 
       if (wait) {
         await new Promise((accept, reject) => {
-          tracker.addEventListener('update', () => {
+          tracker.addEventListener('coordupdate', () => {
             accept();
           }, {
             once: true,
