@@ -1,349 +1,155 @@
-const biomeSpecs = [
-  [
-    "biOcean",
-    6316128,
-    "Vol_26_5_Stone_Base_Color"
-  ],
-  [
-    "biPlains",
-    9286496,
-    "Vol_11_4_Vegetation_Base_Color"
-  ],
-  [
-    "biDesert",
-    16421912,
-    "Vol_16_4_Sand_Base_Color"
-  ],
-  [
-    "biExtremeHills",
-    6316128,
-    "Vol_15_4_Rocks_Base_Color"
-  ],
-  [
-    "biForest",
-    353825,
-    "Vol_17_1_Vegetation_Base_Color"
-  ],
-  [
-    "biTaiga",
-    747097,
-    "Vol_21_1_Vegetation_Base_Color"
-  ],
-  [
-    "biSwampland",
-    3145690,
-    "Vol_19_3_Vegetation_Base_Color"
-  ],
-  [
-    "biRiver",
-    16440917,
-    "Vol_14_1_Dirt_Base_Color"
-  ],
-  [
-    "biNether",
-    8323072,
-    "Vol_43_7_Lava_Base_Color"
-  ],
-  [
-    "biEnd",
-    32767,
-    "Vol_42_4_Vegetation_Base_Color"
-  ],
-  [
-    "biFrozenOcean",
-    9474192,
-    "Vol_22_1_Snow_Ice_Base_Color"
-  ],
-  [
-    "biFrozenRiver",
-    16445632,
-    "Vol_22_4_Snow_Ice_Base_Color"
-  ],
-  [
-    "biTundra",
-    16777215,
-    "Vol_20_4_Snow_Ice_Base_Color"
-  ],
-  [
-    "biIceMountains",
-    10526880,
-    "Vol_20_3_Snow_Ice_Base_Color"
-  ],
-  [
-    "biMushroomIsland",
-    16711935,
-    "Vol_43_1_Rocks_Base_Color"
-  ],
-  [
-    "biMushroomShore",
-    10486015,
-    "Vol_43_5_Stone_Base_Color"
-  ],
-  [
-    "biBeach",
-    16440917,
-    "Vol_16_4_Sand_Base_Color"
-  ],
-  [
-    "biDesertHills",
-    13786898,
-    "Vol_16_6_Sand_Base_Color"
-  ],
-  [
-    "biForestHills",
-    2250012,
-    "Vol_17_2_Vegetation_Base_Color"
-  ],
-  [
-    "biTaigaHills",
-    1456435,
-    "Vol_21_4_Vegetation_Base_Color"
-  ],
-  [
-    "biExtremeHillsEdge",
-    8359807,
-    "Vol_15_4_Rocks_Base_Color"
-  ],
-  [
-    "biJungle",
-    5470985,
-    "Vol_75_4_Grass_Base_Color"
-  ],
-  [
-    "biJungleHills",
-    2900485,
-    "Vol_75_1_Stone_Base_Color"
-  ],
-  [
-    "biJungleEdge",
-    6458135,
-    "Vol_44_2_Stone_Base_Color"
-  ],
-  [
-    "biDeepOcean",
-    3158064,
-    "Vol_26_5_Stone_Base_Color"
-  ],
-  [
-    "biStoneBeach",
-    10658436,
-    "Vol_23_2_Stone_Base_Color"
-  ],
-  [
-    "biColdBeach",
-    16445632,
-    "Vol_71_1_Stone_Base_Color"
-  ],
-  [
-    "biBirchForest",
-    3175492,
-    "Vol_21_4_Vegetation_Base_Color"
-  ],
-  [
-    "biBirchForestHills",
-    2055986,
-    "Vol_21_5_Vegetation_Base_Color"
-  ],
-  [
-    "biRoofedForest",
-    4215066,
-    "Vol_21_1_Vegetation_Base_Color"
-  ],
-  [
-    "biColdTaiga",
-    3233098,
-    "Vol_20_2_Snow_Ice_Base_Color"
-  ],
-  [
-    "biColdTaigaHills",
-    5864818,
-    "Vol_21_1_Vegetation_Base_Color"
-  ],
-  [
-    "biMegaTaiga",
-    5858897,
-    "Vol_19_2_Dirt_Base_Color"
-  ],
-  [
-    "biMegaTaigaHills",
-    5858905,
-    "Vol_19_4_Dirt_Base_Color"
-  ],
-  [
-    "biExtremeHillsPlus",
-    5271632,
-    "Vol_15_4_Rocks_Base_Color"
-  ],
-  [
-    "biSavanna",
-    12431967,
-    "Vol_21_5_Vegetation_Base_Color"
-  ],
-  [
-    "biSavannaPlateau",
-    10984804,
-    "Vol_19_5_Dirt_Base_Color"
-  ],
-  [
-    "biMesa",
-    14238997,
-    "Vol_16_6_Sand_Base_Color"
-  ],
-  [
-    "biMesaPlateauF",
-    11573093,
-    "Vol_23_6_Dirt_Base_Color"
-  ],
-  [
-    "biMesaPlateau",
-    13274213,
-    "Vol_23_6_Dirt_Base_Color"
-  ],
-  [
-    "biSunflowerPlains",
-    11918216,
-    "Vol_113_5_Flower_Base_Color"
-  ],
-  [
-    "biDesertM",
-    16759872,
-    "Vol_40_4_Sand_Base_Color"
-  ],
-  [
-    "biExtremeHillsM",
-    8947848,
-    "Vol_15_4_Rocks_Base_Color"
-  ],
-  [
-    "biFlowerForest",
-    2985545,
-    "Vol_11_4_Vegetation_Base_Color"
-  ],
-  [
-    "biTaigaM",
-    3378817,
-    "Vol_21_1_Vegetation_Base_Color"
-  ],
-  [
-    "biSwamplandM",
-    522674,
-    "Vol_19_3_Vegetation_Base_Color"
-  ],
-  [
-    "biIcePlainsSpikes",
-    11853020,
-    "Vol_36_1_Snow_Ice_Base_Color"
-  ],
-  [
-    "biJungleM",
-    8102705,
-    "Vol_75_4_Grass_Base_Color"
-  ],
-  [
-    "biJungleEdgeM",
-    6458135,
-    "Vol_44_2_Stone_Base_Color"
-  ],
-  [
-    "biBirchForestM",
-    5807212,
-    "Vol_21_4_Vegetation_Base_Color"
-  ],
-  [
-    "biBirchForestHillsM",
-    4687706,
-    "Vol_21_5_Vegetation_Base_Color"
-  ],
-  [
-    "biRoofedForestM",
-    6846786,
-    "Vol_21_1_Vegetation_Base_Color"
-  ],
-  [
-    "biColdTaigaM",
-    2375478,
-    "Vol_20_2_Snow_Ice_Base_Color"
-  ],
-  [
-    "biMegaSpruceTaiga",
-    4542270,
-    "Vol_19_2_Dirt_Base_Color"
-  ],
-  [
-    "biMegaSpruceTaigaHills",
-    4542286,
-    "Vol_19_4_Dirt_Base_Color"
-  ],
-  [
-    "biExtremeHillsPlusM",
-    7903352,
-    "Vol_15_4_Rocks_Base_Color"
-  ],
-  [
-    "biSavannaM",
-    15063687,
-    "Vol_21_5_Vegetation_Base_Color"
-  ],
-  [
-    "biSavannaPlateauM",
-    10984820,
-    "Vol_19_5_Dirt_Base_Color"
-  ],
-  [
-    "biMesaBryce",
-    16739645,
-    "Vol_27_3_Cliffs_Base_Color"
-  ],
-  [
-    "biMesaPlateauFM",
-    14204813,
-    "Vol_23_6_Dirt_Base_Color"
-  ],
-  [
-    "biMesaPlateauM",
-    15905933,
-    "Vol_23_6_Dirt_Base_Color"
-  ],
+import * as THREE from 'three';
+import biomeSpecs from './biomes.json';
 
-  [
-    "teDirt",
-    0x8d6e63,
-    "Vol_26_7_Rocks_Base_Color"
-  ],
-  [
-    "teStone",
-    0x78909c,
-    "Vol_26_5_Stone_Base_Color"
-  ],
+// json
 
-  [
-    "liWater",
-    0x42a5f5,
-    "Vol_36_3_Water_Base_Color"
-  ],
-  [
-    "liWaterOcean",
-    0xFFFFFF,
-    "Vol_36_2_Snow_Ice_Base_Color"
-  ],
-  [
-    "liWaterRiverFrozen",
-    16777215,
-    "Vol_24_1_Snow_Ice_Base_Color"
-  ],
-  [
-    "liWaterOceanFrozen",
-    16777215,
-    "Vol_24_2_Snow_Ice_Base_Color"
-  ],
+export {biomeSpecs};
 
-  [
-    "liLava",
-    0xef5350,
-    "Vol_28_2_Lava_Base_Color"
-  ],
-];
-for (const biome of biomeSpecs) {
-  biome[2] = biome[2].replace(/Base_Color/, '');
+// texture
+
+export const neededTexturePrefixes = (() => {
+  const neededTexturePrefixesSet = new Set();
+  for (const biomeSpec of biomeSpecs) {
+    const textureName = biomeSpec[2];
+    neededTexturePrefixesSet.add(textureName);
+  }
+  const neededTexturePrefixes = Array.from(neededTexturePrefixesSet);
+  return neededTexturePrefixes;
+})();
+export const texturesPerRow = Math.ceil(Math.sqrt(neededTexturePrefixes.length));
+export const biomeUvDataTexture = (() => { // this small texture maps biome indexes in the geometry to biome uvs in the atlas texture
+  const data = new Uint8Array(256 * 4);
+  for (let i = 0; i < biomeSpecs.length; i++) {
+    const biomeSpec = biomeSpecs[i];
+    const textureName = biomeSpec[2];
+
+    const biomeAtlasIndex = neededTexturePrefixes.indexOf(textureName);
+    if (biomeAtlasIndex === -1) {
+      throw new Error('no such biome: ' + textureName);
+    }
+
+    const x = biomeAtlasIndex % texturesPerRow;
+    const y = Math.floor(biomeAtlasIndex / texturesPerRow);
+
+    data[i * 4] = (x / texturesPerRow) * 255;
+    data[i * 4 + 1] = (y / texturesPerRow) * 255;
+    data[i * 4 + 2] = 0;
+    data[i * 4 + 3] = 255;
+  }
+  const texture = new THREE.DataTexture(data, 256, 1, THREE.RGBAFormat);
+  texture.minFilter = THREE.NearestFilter;
+  texture.magFilter = THREE.NearestFilter;
+  texture.needsUpdate = true;
+  return texture;
+})();
+
+// baking
+
+const biomesPngTexturePrefix = `/images/stylized-textures/png/`;
+
+const loadImage = (u) =>
+  new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      resolve(img);
+    };
+    img.onerror = (err) => {
+      if (/Emissive/i.test(u)) {
+        const blankCanvas = document.createElement('canvas');
+        blankCanvas.width = 1;
+        blankCanvas.height = 1;
+        resolve(blankCanvas);
+      } else {
+        reject(err);
+      }
+    };
+    img.crossOrigin = 'Anonymous';
+    img.src = u;
+  });
+function downloadFile(file, filename) {
+  const blobURL = URL.createObjectURL(file);
+  const tempLink = document.createElement('a');
+  tempLink.style.display = 'none';
+  tempLink.href = blobURL;
+  tempLink.setAttribute('download', filename);
+
+  document.body.appendChild(tempLink);
+  tempLink.click();
+  document.body.removeChild(tempLink);
 }
-export default biomeSpecs;
+// this method generates a deduplicted texture atlas for the texture sets used in the mesh
+// the output can be used by ./scripts/build-megatexture-atlas.sh to turn it into a KTX2 texture atlas
+const bakeBiomesAtlas = async ({ size = 8 * 1024 } = {}) => {
+  const atlasTextures = [];
+  const textureTileSize = size / texturesPerRow;
+  const halfTextureTileSize = textureTileSize / 2;
+
+  for (const mapName of mapNames) {
+    const neededTextureNames = neededTexturePrefixes.map(
+      (prefix) => `${prefix}${mapName}`
+    );
+
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+
+    document.body.appendChild(canvas);
+    canvas.style.cssText = `\
+      position: fixed;
+      top: 0;
+      left: 0;
+      z-index: 100;
+      width: 1024px;
+      height: 1024px;
+    `;
+
+    let index = 0;
+    for (const textureName of neededTextureNames) {
+      const x = index % texturesPerRow;
+      const y = Math.floor(index / texturesPerRow);
+
+      const u = biomesPngTexturePrefix + textureName + '.png';
+      const img = await loadImage(u);
+      console.log('load u', u, textureName, img.width, img.height);
+
+      for (let dy = 0; dy < 2; dy++) {
+        for (let dx = 0; dx < 2; dx++) {
+          ctx.drawImage(
+            img,
+            x * textureTileSize + halfTextureTileSize * dx,
+            y * textureTileSize + halfTextureTileSize * dy,
+            halfTextureTileSize,
+            halfTextureTileSize
+          );
+        }
+      }
+      atlasTextures.push({
+        name: textureName,
+        uv: [
+          (x * textureTileSize) / size,
+          (y * textureTileSize) / size,
+          ((x + 1) * textureTileSize) / size,
+          ((y + 1) * textureTileSize) / size,
+        ],
+      });
+
+      index++;
+    }
+
+    const canvasBlob = await new Promise((resolve, reject) => {
+      canvas.toBlob(resolve, 'image/png');
+    });
+    downloadFile(canvasBlob, `${mapName}.png`);
+
+    document.body.removeChild(canvas);
+  }
+
+  // const atlasJson = {
+  //   textures: atlasTextures,
+  // };
+  // const atlasJsonString = JSON.stringify(atlasJson, null, 2);
+  // const atlasJsonBlob = new Blob([atlasJsonString], {type: 'application/json'});
+  // downloadFile(atlasJsonBlob, `megatexture-atlas.json`);
+};
+// window.bakeBiomesAtlas = bakeBiomesAtlas;
