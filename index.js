@@ -912,6 +912,7 @@ class TerrainChunkGenerator {
             chunkSpec.position[0],
             chunkSpec.position[1],
             chunkSpec.position[2],
+            lodArray[0],
             lodArray
           ).divideScalar(chunkWorldSize);
           const signal = this.bindChunk(chunk);
