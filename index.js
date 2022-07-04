@@ -2,7 +2,7 @@ import metaversefile from 'metaversefile';
 // import { useSyncExternalStore } from 'react';
 import * as THREE from 'three';
 // import { terrainVertex, terrainFragment } from './shaders/terrainShader.js';
-import {texturesPerRow, biomeUvDataTexture} from './biomes.js';
+import {texturesPerRow, biomeUvDataTexture, mapNames, biomesPngTexturePrefix, biomesKtx2TexturePrefix} from './biomes.js';
 
 const {
   useApp,
@@ -50,16 +50,6 @@ class ChunkRenderData {
   }
 }
 
-const mapNames = [
-  'Base_Color',
-  'Height',
-  'Normal',
-  'Roughness',
-  'Emissive',
-  'Ambient_Occlusion',
-];
-const biomesKtx2TexturePrefix = `/images/land-textures/`;
-
 const { BatchedMesh, GeometryAllocator } = useInstancing();
 class TerrainMesh extends BatchedMesh {
   constructor({ procGenInstance, physics, biomeUvDataTexture, atlasTextures }) {
@@ -75,13 +65,23 @@ class TerrainMesh extends BatchedMesh {
           Type: Float32Array,
           itemSize: 3,
         },
-        {
+        /* {
           name: 'biomes',
           Type: Int32Array,
           itemSize: 4,
-        },
+        }, */
         {
           name: 'biomesWeights',
+          Type: Float32Array,
+          itemSize: 4,
+        },
+        {
+          name: 'biomesUvs1',
+          Type: Float32Array,
+          itemSize: 4,
+        },
+        {
+          name: 'biomesUvs2',
           Type: Float32Array,
           itemSize: 4,
         },
@@ -153,14 +153,18 @@ class TerrainMesh extends BatchedMesh {
 
 precision highp sampler3D;
 
-attribute ivec4 biomes;
-attribute vec4 biomesWeights;
+// attribute ivec4 biomes;
+// attribute vec4 biomesWeights;
+attribute vec4 biomesUvs1;
+attribute vec4 biomesUvs2;
 uniform vec3 uLightBasePosition;
 uniform float uTerrainSize;
 uniform sampler3D uSkylightTex;
 uniform sampler3D uAoTex;
-flat varying ivec4 vBiomes;
-varying vec4 vBiomesWeights;
+// flat varying ivec4 vBiomes;
+// varying vec4 vBiomesWeights;
+flat varying vec4 vBiomesUvs1;
+flat varying vec4 vBiomesUvs2;
 varying vec3 vPosition;
 varying vec3 vWorldNormal;
 varying float vLightValue;
@@ -178,8 +182,10 @@ varying float vLightValue;
 // varyings
 {
   vWorldNormal = (modelMatrix * vec4(normal, 0.0)).xyz;
-  vBiomes = biomes;
-  vBiomesWeights = biomesWeights;
+  // vBiomes = biomes;
+  // vBiomesWeights = biomesWeights;
+  vBiomesUvs1 = biomesUvs1;
+  vBiomesUvs2 = biomesUvs2;
 }
 
 // lighting
@@ -239,8 +245,10 @@ uniform sampler2D Height;
 uniform sampler2D biomeUvDataTexture;
 uniform vec3 uLightBasePosition;
 uniform float uTerrainSize;
-flat varying ivec4 vBiomes;
-varying vec4 vBiomesWeights;
+// flat varying ivec4 vBiomes;
+flat varying vec4 vBiomesUvs1;
+flat varying vec4 vBiomesUvs2;
+// varying vec4 vBiomesWeights;
 varying vec3 vPosition;
 varying vec3 vWorldNormal;
 // varying vec3 vUvLight;
@@ -281,7 +289,7 @@ vec4 triplanarMap(sampler2D Base_Color, vec3 position, vec3 normal) {
   vec2 ty = position.zx;
   vec2 tz = position.xy;
 
-  vec2 tileOffset = texture2D(biomeUvDataTexture, vec2((float(vBiomes.x) + 0.5) / 256., 0.5)).rg;
+  vec2 tileOffset = vBiomesUvs1.xy; // texture2D(biomeUvDataTexture, vec2((float(vBiomes.x) + 0.5) / 256., 0.5)).rg;
   const vec2 tileSize = vec2(1. / ${texturesPerRow.toFixed(8)}) * 0.5;
 
   vec3 bf = normalize(abs(normal));
@@ -304,7 +312,7 @@ vec4 triplanarMapDx(sampler2D Base_Color, vec3 position, vec3 normal) {
   vec2 tyDx = dFdx(ty);
   vec2 tzDx = dFdx(tz);
 
-  vec2 tileOffset = texture2D(biomeUvDataTexture, vec2((float(vBiomes.x) + 0.5) / 256., 0.5)).rg;
+  vec2 tileOffset = vBiomesUvs1.xy; // texture2D(biomeUvDataTexture, vec2((float(vBiomes.x) + 0.5) / 256., 0.5)).rg;
   const vec2 tileSize = vec2(1. / ${texturesPerRow.toFixed(8)}) * 0.5;
 
   vec3 bf = normalize(abs(normal));
@@ -327,7 +335,7 @@ vec4 triplanarMapDy(sampler2D Base_Color, vec3 position, vec3 normal) {
   vec2 tyDy = dFdy(ty);
   vec2 tzDy = dFdy(tz);
 
-  vec2 tileOffset = texture2D(biomeUvDataTexture, vec2((float(vBiomes.x) + 0.5) / 256., 0.5)).rg;
+  vec2 tileOffset = vBiomesUvs1.xy; // texture2D(biomeUvDataTexture, vec2((float(vBiomes.x) + 0.5) / 256., 0.5)).rg;
   const vec2 tileSize = vec2(1. / ${texturesPerRow.toFixed(8)}) * 0.5;
 
   vec3 bf = normalize(abs(normal));
@@ -347,7 +355,7 @@ vec4 triplanarNormal(sampler2D Normal, vec3 position, vec3 normal) {
   vec2 uvY = position.xz;
   vec2 uvZ = position.xy;
 
-  vec2 tileOffset = texture2D(biomeUvDataTexture, vec2((float(vBiomes.x) + 0.5) / 256., 0.5)).rg;
+  vec2 tileOffset = vBiomesUvs1.xy; // texture2D(biomeUvDataTexture, vec2((float(vBiomes.x) + 0.5) / 256., 0.5)).rg;
   const vec2 tileSize = vec2(1. / ${texturesPerRow.toFixed(8)}) * 0.5;
   
   vec3 bf = normalize(abs(normal));
@@ -584,8 +592,10 @@ float roughnessFactor = roughness;
       ) => {
         let positionOffset = geometryBinding.getAttributeOffset('position');
         let normalOffset = geometryBinding.getAttributeOffset('normal');
-        let biomesOffset = geometryBinding.getAttributeOffset('biomes');
+        // let biomesOffset = geometryBinding.getAttributeOffset('biomes');
         let biomesWeightsOffset = geometryBinding.getAttributeOffset('biomesWeights');
+        let biomesUvs1Offset = geometryBinding.getAttributeOffset('biomesUvs1');
+        let biomesUvs2Offset = geometryBinding.getAttributeOffset('biomesUvs2');
         let indexOffset = geometryBinding.getIndexOffset();
 
         _mapOffsettedIndices(
@@ -607,16 +617,29 @@ float roughnessFactor = roughness;
           meshData.normals,
           0
         );
-        geometry.attributes.biomes.update(
+        /* geometry.attributes.biomes.update(
           biomesOffset,
           meshData.biomes.length,
           meshData.biomes,
           0
-        );
+        ); */
         geometry.attributes.biomesWeights.update(
           biomesWeightsOffset,
           meshData.biomesWeights.length,
           meshData.biomesWeights,
+          0
+        );
+        // console.log('biomes', geometry.attributes.biomesUvs1, geometry.attributes.biomesUvs2);
+        geometry.attributes.biomesUvs1.update(
+          biomesUvs1Offset,
+          meshData.biomesUvs1.length,
+          meshData.biomesUvs1,
+          0
+        );
+        geometry.attributes.biomesUvs2.update(
+          biomesUvs2Offset,
+          meshData.biomesUvs2.length,
+          meshData.biomesUvs2,
           0
         );
         geometry.index.update(indexOffset, meshData.indices.length);

@@ -5,7 +5,18 @@ import biomeSpecs from './biomes.json';
 
 export {biomeSpecs};
 
-// texture
+// constants
+
+export const mapNames = [
+  'Base_Color',
+  'Height',
+  'Normal',
+  'Roughness',
+  'Emissive',
+  'Ambient_Occlusion',
+];
+export const biomesPngTexturePrefix = `/images/stylized-textures/png/`;
+export const biomesKtx2TexturePrefix = `/images/land-textures/`;
 
 export const neededTexturePrefixes = (() => {
   const neededTexturePrefixesSet = new Set();
@@ -43,9 +54,40 @@ export const biomeUvDataTexture = (() => { // this small texture maps biome inde
   return texture;
 })();
 
-// baking
+const biomeUvs = (() => {
+  // const data = new Float32Array(biomeSpecs.length * 2);
+  const biomeUvs = Array(biomeSpecs.length);
+  for (let i = 0; i < biomeSpecs.length; i++) {
+    const biomeSpec = biomeSpecs[i];
+    const biomeName = biomeSpec[0];
+    const textureName = biomeSpec[2];
 
-const biomesPngTexturePrefix = `/images/stylized-textures/png/`;
+    const biomeAtlasIndex = neededTexturePrefixes.indexOf(textureName);
+    if (biomeAtlasIndex === -1) {
+      throw new Error('no such biome: ' + textureName);
+    }
+
+    const x = biomeAtlasIndex % texturesPerRow;
+    const y = Math.floor(biomeAtlasIndex / texturesPerRow);
+
+    biomeUvs[i] = {
+      name: biomeName,
+      uv: [x / texturesPerRow, y / texturesPerRow],
+    };
+  }
+  return biomeUvs;
+})();
+const biomeUvsString = (() => {
+  let result = '';
+  for (let i = 0; i < biomeUvs.length; i++) {
+    const {name, uv} = biomeUvs[i];
+    result += `{${uv[0]}, ${uv[1]}}, // ${name}\n`;
+  }
+  return result;
+})();
+window.biomeUvsString = biomeUvsString;
+
+// baking
 
 const loadImage = (u) =>
   new Promise((resolve, reject) => {
@@ -80,7 +122,7 @@ function downloadFile(file, filename) {
 // this method generates a deduplicted texture atlas for the texture sets used in the mesh
 // the output can be used by ./scripts/build-megatexture-atlas.sh to turn it into a KTX2 texture atlas
 const bakeBiomesAtlas = async ({ size = 8 * 1024 } = {}) => {
-  const atlasTextures = [];
+  // const atlasTextures = [];
   const textureTileSize = size / texturesPerRow;
   const halfTextureTileSize = textureTileSize / 2;
 
@@ -124,15 +166,15 @@ const bakeBiomesAtlas = async ({ size = 8 * 1024 } = {}) => {
           );
         }
       }
-      atlasTextures.push({
-        name: textureName,
-        uv: [
-          (x * textureTileSize) / size,
-          (y * textureTileSize) / size,
-          ((x + 1) * textureTileSize) / size,
-          ((y + 1) * textureTileSize) / size,
-        ],
-      });
+      // atlasTextures.push({
+      //   name: textureName,
+      //   uv: [
+      //     (x * textureTileSize) / size,
+      //     (y * textureTileSize) / size,
+      //     ((x + 1) * textureTileSize) / size,
+      //     ((y + 1) * textureTileSize) / size,
+      //   ],
+      // });
 
       index++;
     }
