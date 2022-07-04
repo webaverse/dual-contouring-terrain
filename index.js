@@ -85,6 +85,16 @@ class TerrainMesh extends BatchedMesh {
           Type: Float32Array,
           itemSize: 4,
         },
+        {
+          name: 'skylights',
+          Type: Uint8Array,
+          itemSize: 1,
+        },
+        {
+          name: 'aos',
+          Type: Uint8Array,
+          itemSize: 1,
+        },
       ],
       {
         bufferSize,
@@ -157,10 +167,13 @@ precision highp sampler3D;
 // attribute vec4 biomesWeights;
 attribute vec4 biomesUvs1;
 attribute vec4 biomesUvs2;
+attribute float skylights;
+attribute float aos;
+
 uniform vec3 uLightBasePosition;
 uniform float uTerrainSize;
-uniform sampler3D uSkylightTex;
-uniform sampler3D uAoTex;
+// uniform sampler3D uSkylightTex;
+// uniform sampler3D uAoTex;
 // flat varying ivec4 vBiomes;
 // varying vec4 vBiomesWeights;
 flat varying vec4 vBiomesUvs1;
@@ -197,8 +210,8 @@ varying float vLightValue;
 
   // skylight
   {
-    vec4 skylightColor = texture(uSkylightTex, uvLight);
-    float skylightValue = skylightColor.r * 255.;
+    // vec4 skylightColor = texture(uSkylightTex, uvLight);
+    float skylightValue = skylights;
 
     const float maxSkylight = 8.;
     skylightValue /= maxSkylight;
@@ -207,8 +220,8 @@ varying float vLightValue;
   }
   // ao
   {
-    vec4 aoColor = texture(uAoTex, uvLight);
-    float aoValue = aoColor.r * 255.;
+    // vec4 aoColor = texture(uAoTex, uvLight);
+    float aoValue = aos;
     
     const float maxAo = 27.;
     const float baseAo = 0.3;
@@ -510,14 +523,14 @@ float roughnessFactor = roughness;
         };
       }
       // lighting
-      uniforms.uSkylightTex = {
+      /* uniforms.uSkylightTex = {
         value: lightMapper.skylightTex,
         needsUpdate: true,
       };
       uniforms.uAoTex = {
         value: lightMapper.aoTex,
         needsUpdate: true,
-      };
+      }; */
       uniforms.uLightBasePosition = {
         value: lightMapper.lightBasePosition.clone(),
         needsUpdate: true,
@@ -545,7 +558,7 @@ float roughnessFactor = roughness;
   }
   async getChunkRenderData(chunk, signal) {
     const meshData =
-      await this.procGenInstance.dcWorkerManager.generateTerrainChunkRenderable(
+      await this.procGenInstance.dcWorkerManager.generateTerrainChunk(
         chunk,
         chunk.lodArray,
         {
@@ -596,6 +609,8 @@ float roughnessFactor = roughness;
         let biomesWeightsOffset = geometryBinding.getAttributeOffset('biomesWeights');
         let biomesUvs1Offset = geometryBinding.getAttributeOffset('biomesUvs1');
         let biomesUvs2Offset = geometryBinding.getAttributeOffset('biomesUvs2');
+        let skylightsOffset = geometryBinding.getAttributeOffset('skylights');
+        let aosOffset = geometryBinding.getAttributeOffset('aos');
         let indexOffset = geometryBinding.getIndexOffset();
 
         _mapOffsettedIndices(
@@ -640,6 +655,18 @@ float roughnessFactor = roughness;
           biomesUvs2Offset,
           meshData.biomesUvs2.length,
           meshData.biomesUvs2,
+          0
+        );
+        geometry.attributes.skylights.update(
+          skylightsOffset,
+          meshData.skylights.length,
+          meshData.skylights,
+          0
+        );
+        geometry.attributes.aos.update(
+          aosOffset,
+          meshData.aos.length,
+          meshData.aos,
           0
         );
         geometry.index.update(indexOffset, meshData.indices.length);
