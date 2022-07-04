@@ -122,7 +122,7 @@ class TerrainMesh extends BatchedMesh {
     )
     grassNormal.wrapS = grassNormal.wrapT = THREE.RepeatWrapping */
 
-    const lightMapper = procGenInstance.getLightMapper({
+    /* const lightMapper = procGenInstance.getLightMapper({
       // debug: true,
     });
     lightMapper.addEventListener('coordupdate', e => {
@@ -130,7 +130,7 @@ class TerrainMesh extends BatchedMesh {
       // console.log('coord update', coord.toArray().join(','));
       material.uniforms.uLightBasePosition.value.copy(coord);
       material.uniforms.uLightBasePosition.needsUpdate = true;
-    });
+    }); */
 
     const material = new THREE.MeshStandardMaterial({
       map: new THREE.Texture(),
@@ -170,7 +170,7 @@ attribute vec4 biomesUvs2;
 attribute float skylights;
 attribute float aos;
 
-uniform vec3 uLightBasePosition;
+// uniform vec3 uLightBasePosition;
 uniform float uTerrainSize;
 // uniform sampler3D uSkylightTex;
 // uniform sampler3D uAoTex;
@@ -205,7 +205,7 @@ varying float vLightValue;
 {
   const float numLightBands = 8.;
 
-  vec3 uvLight = (vPosition - uLightBasePosition) / uTerrainSize; // XXX this can be interpolated in the vertex shader
+  // vec3 uvLight = (vPosition - uLightBasePosition) / uTerrainSize; // XXX this can be interpolated in the vertex shader
   float lightValue = 1.;
 
   // skylight
@@ -232,9 +232,9 @@ varying float vLightValue;
   }
 
   // clip lighting
-  if (uvLight.x <= 0. || uvLight.x >= uTerrainSize || uvLight.z <= 0. || uvLight.z >= uTerrainSize || uvLight.y <= 0. || uvLight.y >= uTerrainSize) {
+  /* if (uvLight.x <= 0. || uvLight.x >= uTerrainSize || uvLight.z <= 0. || uvLight.z >= uTerrainSize || uvLight.y <= 0. || uvLight.y >= uTerrainSize) {
     lightValue = 0.;
-  }
+  } */
   // adjust lighting
   lightValue *= 2.;
 
@@ -256,7 +256,7 @@ uniform sampler2D Roughness;
 uniform sampler2D Ambient_Occlusion;
 uniform sampler2D Height;
 uniform sampler2D biomeUvDataTexture;
-uniform vec3 uLightBasePosition;
+// uniform vec3 uLightBasePosition;
 uniform float uTerrainSize;
 // flat varying ivec4 vBiomes;
 flat varying vec4 vBiomesUvs1;
@@ -531,10 +531,10 @@ float roughnessFactor = roughness;
         value: lightMapper.aoTex,
         needsUpdate: true,
       }; */
-      uniforms.uLightBasePosition = {
+      /* uniforms.uLightBasePosition = {
         value: lightMapper.lightBasePosition.clone(),
         needsUpdate: true,
-      };
+      }; */
       uniforms.uTerrainSize = {
         value: terrainSize,
         needsUpdate: true,
@@ -550,7 +550,7 @@ float roughnessFactor = roughness;
     this.allocator = allocator;
     this.physicsObjects = [];
 
-    this.lightMapper = lightMapper;
+    // this.lightMapper = lightMapper;
   }
   async addChunk(chunk, { signal }) {
     const renderData = await this.getChunkRenderData(chunk, signal);
@@ -697,7 +697,7 @@ float roughnessFactor = roughness;
       };
       _handleMesh();
 
-      this.lightMapper.drawChunk(chunk, meshData);
+      // this.lightMapper.drawChunk(chunk, meshData);
 
       const _handlePhysics = async () => {
         this.matrixWorld.decompose(localVector, localQuaternion, localVector2);
@@ -724,7 +724,7 @@ float roughnessFactor = roughness;
   }
   updateCoord(min1xCoord) {
     // XXX this should be done in a separate app
-    this.lightMapper.updateCoord(min1xCoord);
+    // this.lightMapper.updateCoord(min1xCoord);
   }
 }
 
