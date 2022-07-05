@@ -7,10 +7,10 @@ import {texturesPerRow, biomeUvDataTexture, mapNames, biomesPngTexturePrefix, bi
 const {
   useApp,
   useLocalPlayer,
-  useScene,
-  useRenderer,
+  // useScene,
+  // useRenderer,
   useFrame,
-  useMaterials,
+  // useMaterials,
   useCleanup,
   usePhysics,
   useLoaders,
@@ -35,7 +35,7 @@ const chunkWorldSize = procGenManager.chunkSize;
 const terrainSize = chunkWorldSize * 4;
 const chunkRadius = Math.sqrt(chunkWorldSize * chunkWorldSize * 3);
 const numLods = 2;
-const bufferSize = 20 * 1024 * 1024;
+const bufferSize = 1 * 1024 * 1024;
 
 const abortError = new Error('chunk disposed');
 abortError.isAbortError = true;
@@ -552,10 +552,10 @@ float roughnessFactor = roughness;
 
     // this.lightMapper = lightMapper;
   }
-  async addChunk(chunk, { signal }) {
+  /* async addChunk(chunk, { signal }) {
     const renderData = await this.getChunkRenderData(chunk, signal);
     this.drawChunk(chunk, renderData, signal);
-  }
+  } */
   async getChunkRenderData(chunk, signal) {
     const meshData =
       await this.procGenInstance.dcWorkerManager.generateTerrainChunk(
@@ -574,6 +574,7 @@ float roughnessFactor = roughness;
       geometry.setIndex(new THREE.BufferAttribute(meshData.indices, 1));
       const physicsMesh = new THREE.Mesh(geometry, fakeMaterial);
 
+      // XXX this needs to free memory
       const geometryBuffer = await this.physics.cookGeometryAsync(physicsMesh, {
         signal,
       });
@@ -774,46 +775,58 @@ class TerrainChunkGenerator {
       }
     }
   }
-  disposeChunk(chunk) {
+  /* removeChunkTask(task) {
     const binding = chunk.binding;
     if (binding) {
       const {abortController} = binding;
       abortController.abort(abortError);
 
       chunk.binding = null;
+      chunk.disposeStack = new Error().stack;
     }
-  }
-  async relodChunks(oldChunks, newChunk) {
-    // console.log('relod chunk', oldChunk, newChunk);
+  } */
+  async relodChunksTask(task) {
+    // const {oldChunks, newChunk, signal} = task;
+    // console.log('relod chunk', task);
 
     try {
-      const oldAbortControllers = oldChunks.map(oldChunk => {
+      /* const oldAbortControllers = oldChunks.map(oldChunk => {
         return oldChunk.binding.abortController;
-      });
+      }); */
       // const oldAbortController = oldChunk.binding.abortController;
-      const newSignal = this.bindChunk(newChunk);
+      // const newSignal = this.bindChunk(newChunk);
 
-      const abortOldChunks = e => {
+      /* const abortOldChunks = e => {
         for (const oldAbortController of oldAbortControllers) {
           oldAbortController.abort(abortError);
         }
       };
-      newSignal.addEventListener('abort', abortOldChunks);
+      newSignal.addEventListener('abort', abortOldChunks); */
 
-      const renderData = await this.terrainMesh.getChunkRenderData(
-        newChunk,
-        newSignal
-      );
-
-      newSignal.removeEventListener('abort', abortOldChunks);
-
-      for (const oldChunk of oldChunks) {
-        this.disposeChunk(oldChunk);
+      if (task.isAddTask) {
+        const {newNode, oldNodes, signal} = task;
+        
+        const renderData = await this.terrainMesh.getChunkRenderData(
+          newNode,
+          signal
+        );
+        signal.throwIfAborted();
+  
+        for (const oldNode of oldNodes) {
+          this.disposeChunk(oldNode);
+        }
+        this.terrainMesh.drawChunk(newNode, renderData, signal);
       }
-      this.terrainMesh.drawChunk(newChunk, renderData, newSignal);
+      if (task.isRemoveTask) {
+        const {oldNode} = task;
+        this.disposeChunk(oldNode);
+      }
     } catch (err) {
-      if (!err?.isAbortError) {
-        console.warn(err);
+      if (err?.isAbortError) {
+        // nothing
+      } else {
+        throw err;
+        // console.warn(err);
       }
     }
   }
@@ -977,8 +990,8 @@ export default (e) => {
       chunkHeight: chunkWorldSize,
     }); */
       tracker.addEventListener('coordupdate', coordupdate);
-      tracker.addEventListener('chunkadd', chunkadd);
-      tracker.addEventListener('chunkremove', chunkremove);
+      // tracker.addEventListener('chunkadd', chunkadd);
+      // tracker.addEventListener('chunkremove', chunkremove);
       tracker.addEventListener('chunkrelod', chunkrelod);
       // tracker.emitEvents(chunkadd);
 
@@ -1008,17 +1021,17 @@ export default (e) => {
     const {coord} = e.data;
     generator.terrainMesh.updateCoord(coord);
   };
-  const chunkadd = (e) => {
+  /* const chunkadd = (e) => {
     const {chunk, waitUntil} = e.data;
     waitUntil(generator.generateChunk(chunk));
   };
   const chunkremove = (e) => {
     const {chunk} = e.data;
     generator.disposeChunk(chunk);
-  };
+  }; */
   const chunkrelod = (e) => {
-    const {oldChunks, newChunk} = e.data;
-    generator.relodChunks(oldChunks, newChunk);
+    const {task} = e.data;
+    generator.relodChunksTask(task);
   };
 
   useFrame(() => {
