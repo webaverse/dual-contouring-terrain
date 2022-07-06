@@ -38,7 +38,7 @@ const procGenManager = useProcGenManager();
 const chunkWorldSize = procGenManager.chunkSize;
 const terrainSize = chunkWorldSize * 4;
 const chunkRadius = Math.sqrt(chunkWorldSize * chunkWorldSize * 3);
-const numLods = 2;
+const numLods = 3;
 const bufferSize = 4 * 1024 * 1024;
 
 const abortError = new Error('chunk disposed');
@@ -808,7 +808,7 @@ class TerrainChunkGenerator {
 
       let {newNodes, oldNodes, signal} = task;
 
-      newNodes = newNodes.filter(newNode => newNode.lod <= 2);
+      // newNodes = newNodes.filter(newNode => newNode.lod <= 2);
       // console.log('got new nodes', newNodes, oldNodes);
 
       const renderDatas = await Promise.all(newNodes.map(newNode => this.terrainMesh.getChunkRenderData(
