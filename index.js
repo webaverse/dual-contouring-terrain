@@ -851,7 +851,7 @@ class TerrainChunkGenerator {
       // task.commit();
     } catch (err) {
       if (err?.isAbortError) {
-        console.log('chunk render abort', new Error().stack);
+        // console.log('chunk render abort', new Error().stack);
         // nothing
       } else {
         throw err;
