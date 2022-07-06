@@ -28,6 +28,10 @@ const localMatrix = new THREE.Matrix4();
 const localMatrix2 = new THREE.Matrix4();
 const localSphere = new THREE.Sphere();
 
+//
+
+const liveChunks = [];
+
 // const zeroVector = new THREE.Vector3();
 
 const procGenManager = useProcGenManager();
@@ -559,7 +563,7 @@ float roughnessFactor = roughness;
   async getChunkRenderData(chunk, signal) {
     const meshData =
       await this.procGenInstance.dcWorkerManager.generateTerrainChunk(
-        chunk,
+        chunk.min,
         chunk.lodArray,
         {
           signal,
@@ -586,7 +590,7 @@ float roughnessFactor = roughness;
   drawChunk(chunk, renderData, signal) {
     if (renderData) {
       // non-empty chunk
-      const { meshData, geometryBuffer } = renderData;
+      const {meshData, geometryBuffer} = renderData;
 
       const _mapOffsettedIndices = (
         srcIndices,
@@ -692,13 +696,11 @@ float roughnessFactor = roughness;
           geometryBinding
         );
 
-        signal.addEventListener('abort', (e) => {
+        chunk.addEventListener('destroy', (e) => {
           this.allocator.free(geometryBinding);
         });
       };
       _handleMesh();
-
-      // this.lightMapper.drawChunk(chunk, meshData);
 
       const _handlePhysics = async () => {
         this.matrixWorld.decompose(localVector, localQuaternion, localVector2);
@@ -710,9 +712,7 @@ float roughnessFactor = roughness;
         );
         this.physicsObjects.push(physicsObject);
 
-        // console.log('cook 3', mesh);
-
-        signal.addEventListener('abort', (e) => {
+        chunk.addEventListener('destroy', (e) => {
           this.physics.removeGeometry(physicsObject);
           this.physicsObjects.splice(
             this.physicsObjects.indexOf(physicsObject),
@@ -721,6 +721,8 @@ float roughnessFactor = roughness;
         });
       };
       _handlePhysics();
+
+      liveChunks.push(chunk);
     }
   }
   updateCoord(min1xCoord) {
@@ -786,6 +788,7 @@ class TerrainChunkGenerator {
     }
   } */
   async relodChunksTask(task) {
+    // console.log('got task', task);
     // const {oldChunks, newChunk, signal} = task;
     // console.log('relod chunk', task);
 
@@ -803,26 +806,44 @@ class TerrainChunkGenerator {
       };
       newSignal.addEventListener('abort', abortOldChunks); */
 
-      if (task.isAddTask) {
-        const {newNode, oldNodes, signal} = task;
-        
-        const renderData = await this.terrainMesh.getChunkRenderData(
-          newNode,
-          signal
-        );
-        signal.throwIfAborted();
-  
-        for (const oldNode of oldNodes) {
-          this.disposeChunk(oldNode);
-        }
+      let {newNodes, oldNodes, signal} = task;
+
+      newNodes = newNodes.filter(newNode => newNode.lod <= 2);
+      // console.log('got new nodes', newNodes, oldNodes);
+
+      const renderDatas = await Promise.all(newNodes.map(newNode => this.terrainMesh.getChunkRenderData(
+        newNode,
+        signal
+      )));
+      signal.throwIfAborted();
+
+      // console.log('got data', renderDatas);
+
+      for (const oldNode of oldNodes) {
+        // this.disposeChunk(oldNode);
+        // oldNode.destroy();
+        const liveChunk = liveChunks.find(chunk => chunk.min.equals(oldNode.min));
+        if (liveChunk) {
+          liveChunk.destroy();
+          liveChunks.splice(liveChunks.indexOf(liveChunk), 1);
+        } /* else {
+          console.log('no chunk', oldNode, liveChunks);
+          debugger;
+        } */
+      }
+      /* for (const oldNode of oldNodes) {
+        oldNode.destroy();
+      } */
+      for (let i = 0; i < newNodes.length; i++) {
+        const newNode = newNodes[i];
+        const renderData = renderDatas[i];
         this.terrainMesh.drawChunk(newNode, renderData, signal);
       }
-      if (task.isRemoveTask) {
-        const {oldNode} = task;
-        this.disposeChunk(oldNode);
-      }
+
+      // task.commit();
     } catch (err) {
       if (err?.isAbortError) {
+        console.log('chunk render abort', new Error().stack);
         // nothing
       } else {
         throw err;
@@ -981,7 +1002,7 @@ export default (e) => {
         numLods,
         trackY: true,
         relod: true,
-        // debug: true,
+        debug: true,
       });
       // tracker.name = 'terrain';
       /* tracker = new LodChunkTracker(generator, {
@@ -1029,9 +1050,8 @@ export default (e) => {
     const {chunk} = e.data;
     generator.disposeChunk(chunk);
   }; */
-  const chunkrelod = (e) => {
-    const {task} = e.data;
-    generator.relodChunksTask(task);
+  const chunkrelod = e => {
+    generator.relodChunksTask(e.data.task);
   };
 
   useFrame(() => {
