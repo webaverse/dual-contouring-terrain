@@ -39,7 +39,7 @@ const chunkWorldSize = procGenManager.chunkSize;
 const terrainSize = chunkWorldSize * 4;
 const chunkRadius = Math.sqrt(chunkWorldSize * chunkWorldSize * 3);
 const numLods = 2;
-const bufferSize = 1 * 1024 * 1024;
+const bufferSize = 4 * 1024 * 1024;
 
 const abortError = new Error('chunk disposed');
 abortError.isAbortError = true;
