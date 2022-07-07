@@ -30,15 +30,15 @@ const localSphere = new THREE.Sphere();
 
 //
 
-const liveChunks = [];
-
+// const liveChunks = [];
 // const zeroVector = new THREE.Vector3();
 
 const procGenManager = useProcGenManager();
 const chunkWorldSize = procGenManager.chunkSize;
 const terrainSize = chunkWorldSize * 4;
 const chunkRadius = Math.sqrt(chunkWorldSize * chunkWorldSize * 3);
-const numLods = 3;
+const defaultNumNods = 3;
+const defaultMinLodRange = 2;
 const bufferSize = 4 * 1024 * 1024;
 
 const abortError = new Error('chunk disposed');
@@ -56,7 +56,13 @@ class ChunkRenderData {
 
 const { BatchedMesh, GeometryAllocator } = useInstancing();
 class TerrainMesh extends BatchedMesh {
-  constructor({ procGenInstance, physics, biomeUvDataTexture, atlasTextures }) {
+  constructor({
+    procGenInstance,
+    physics,
+    biomeUvDataTexture,
+    atlasTextures,
+    physicsEnabled = true,
+  }) {
     const allocator = new GeometryAllocator(
       [
         {
@@ -549,6 +555,8 @@ float roughnessFactor = roughness;
     super(geometry, material, allocator);
     this.frustumCulled = false;
 
+    this.physicsEnabled = physicsEnabled;
+
     this.procGenInstance = procGenInstance;
     this.physics = physics;
     this.allocator = allocator;
@@ -570,17 +578,20 @@ float roughnessFactor = roughness;
         }
       );
     if (meshData) {
-      const geometry = new THREE.BufferGeometry();
-      geometry.setAttribute(
-        'position',
-        new THREE.BufferAttribute(meshData.positions, 3)
-      );
-      geometry.setIndex(new THREE.BufferAttribute(meshData.indices, 1));
-      const physicsMesh = new THREE.Mesh(geometry, fakeMaterial);
+      let geometryBuffer = null;
+      if (this.physicsEnabled) {
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute(
+          'position',
+          new THREE.BufferAttribute(meshData.positions, 3)
+        );
+        geometry.setIndex(new THREE.BufferAttribute(meshData.indices, 1));
+        const physicsMesh = new THREE.Mesh(geometry, fakeMaterial);
 
-      const geometryBuffer = await this.physics.cookGeometryAsync(physicsMesh, {
-        signal,
-      });
+        geometryBuffer = await this.physics.cookGeometryAsync(physicsMesh, {
+          signal,
+        });
+      }
       return new ChunkRenderData(meshData, geometryBuffer);
     } else {
       return null;
@@ -698,39 +709,37 @@ float roughnessFactor = roughness;
         const ondestroy = e => {
           this.allocator.free(geometryBinding);
         };
-        // chunk.addEventListener('destroy', ondestroy);
         tracker.listenForChunkDestroy(chunk, ondestroy);
       };
       _handleMesh();
 
       const _handlePhysics = async () => {
-        this.matrixWorld.decompose(localVector, localQuaternion, localVector2);
-        const physicsObject = this.physics.addCookedGeometry(
-          geometryBuffer,
-          localVector,
-          localQuaternion,
-          localVector2
-        );
-        this.physicsObjects.push(physicsObject);
-
-        /* chunk.addEventListener('destroy', );
-        const ondestroy = e => {
-          this.allocator.free(geometryBinding);
-        }; */
-        const ondestroy = e => {
-          this.physics.removeGeometry(physicsObject);
-          this.physicsObjects.splice(
-            this.physicsObjects.indexOf(physicsObject),
-            1
+        if (geometryBuffer) {
+          this.matrixWorld.decompose(localVector, localQuaternion, localVector2);
+          const physicsObject = this.physics.addCookedGeometry(
+            geometryBuffer,
+            localVector,
+            localQuaternion,
+            localVector2
           );
+          this.physicsObjects.push(physicsObject);
+
+          /* chunk.addEventListener('destroy', );
+          const ondestroy = e => {
+            this.allocator.free(geometryBinding);
+          }; */
+          const ondestroy = e => {
+            this.physics.removeGeometry(physicsObject);
+            this.physicsObjects.splice(
+              this.physicsObjects.indexOf(physicsObject),
+              1
+            );
+          }
+          // chunk.addEventListener('destroy', ondestroy);
+          tracker.listenForChunkDestroy(chunk, ondestroy);
         }
-        // chunk.addEventListener('destroy', ondestroy);
-        tracker.listenForChunkDestroy(chunk, ondestroy);
       };
       _handlePhysics();
-
-      // liveChunks.push(chunk);
-      // task.addChunk(chunk);
     }
   }
   updateCoord(min1xCoord) {
@@ -745,12 +754,14 @@ class TerrainChunkGenerator {
     physics,
     biomeUvDataTexture,
     atlasTextures,
+    physicsEnabled,
   } = {}) {
     // parameters
     this.procGenInstance = procGenInstance;
     this.physics = physics;
     this.biomeUvDataTexture = biomeUvDataTexture;
     this.atlasTextures = atlasTextures;
+    this.physicsEnabled = physicsEnabled;
 
     // mesh
     this.object = new THREE.Group();
@@ -761,6 +772,7 @@ class TerrainChunkGenerator {
       physics: this.physics,
       biomeUvDataTexture: this.biomeUvDataTexture,
       atlasTextures: this.atlasTextures,
+      physicsEnabled: this.physicsEnabled,
     });
     this.object.add(this.terrainMesh);
   }
@@ -848,7 +860,7 @@ class TerrainChunkGenerator {
         this.terrainMesh.drawChunk(newNode, renderData, signal, task, tracker);
       }
 
-      // task.commit();
+      task.commit();
     } catch (err) {
       if (err?.isAbortError) {
         // console.log('chunk render abort', new Error().stack);
@@ -953,13 +965,18 @@ export default (e) => {
   const physics = usePhysics();
   const procGenManager = useProcGenManager();
 
+  const renderPosition = app.getComponent('renderPosition') ?? null;
+  const lods = app.getComponent('lods') ?? defaultNumNods;
+  const minLodRange = app.getComponent('minLodRange') ?? defaultMinLodRange;
+
   const seed = app.getComponent('seed') ?? null;
-  let range = app.getComponent('range') ?? null;
+  let clipRange = app.getComponent('clipRange') ?? null;
   const wait = app.getComponent('wait') ?? false;
-  if (range) {
-    range = new THREE.Box3(
-      new THREE.Vector3(range[0][0], range[0][1], range[0][2]),
-      new THREE.Vector3(range[1][0], range[1][1], range[1][2])
+  const debug = app.getComponent('debug') ?? false;
+  if (clipRange) {
+    clipRange = new THREE.Box3(
+      new THREE.Vector3().fromArray(clipRange[0]),
+      new THREE.Vector3().fromArray(clipRange[1]),
     );
   }
 
@@ -998,20 +1015,25 @@ export default (e) => {
         atlasTextures[mapNames[i]] = compressedTexture;
       }
 
-      const procGenInstance = procGenManager.getInstance(seed, range);
+      const procGenInstance = procGenManager.getInstance(seed, clipRange);
 
       generator = new TerrainChunkGenerator({
         procGenInstance,
         physics,
         biomeUvDataTexture,
         atlasTextures,
+        physicsEnabled: !renderPosition,
       });
       tracker = procGenInstance.getChunkTracker({
-        numLods,
+        lods,
+        minLodRange,
         trackY: true,
-        relod: true,
-        debug: true,
+        debug,
       });
+      if (debug) {
+        app.add(tracker.debugMesh);
+        tracker.debugMesh.updateMatrixWorld();
+      }
       // tracker.name = 'terrain';
       /* tracker = new LodChunkTracker(generator, {
       chunkWorldSize,
@@ -1024,14 +1046,13 @@ export default (e) => {
       tracker.addEventListener('chunkrelod', chunkrelod);
       // tracker.emitEvents(chunkadd);
 
+      if (renderPosition) {
+        tracker.update(localVector.fromArray(renderPosition));
+      }
       if (wait) {
-        await new Promise((accept, reject) => {
-          tracker.addEventListener('coordupdate', () => {
-            accept();
-          }, {
-            once: true,
-          });
-        });
+        // console.log('tracker wait 1');
+        await tracker.waitForLoad();
+        // console.log('tracker wait 2');
       }
 
       app.add(generator.object);
@@ -1063,7 +1084,7 @@ export default (e) => {
   };
 
   useFrame(() => {
-    if (!!tracker && !range) {
+    if (!!tracker && !renderPosition) {
       const localPlayer = useLocalPlayer();
       localMatrix
         .copy(localPlayer.matrixWorld)
