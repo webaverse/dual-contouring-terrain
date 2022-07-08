@@ -61,7 +61,6 @@ class TerrainMesh extends BatchedMesh {
     physics,
     biomeUvDataTexture,
     atlasTextures,
-    physicsEnabled = true,
   }) {
     const allocator = new GeometryAllocator(
       [
@@ -555,8 +554,6 @@ float roughnessFactor = roughness;
     super(geometry, material, allocator);
     this.frustumCulled = false;
 
-    this.physicsEnabled = physicsEnabled;
-
     this.procGenInstance = procGenInstance;
     this.physics = physics;
     this.allocator = allocator;
@@ -579,7 +576,7 @@ float roughnessFactor = roughness;
       );
     if (meshData) {
       let geometryBuffer = null;
-      if (this.physicsEnabled) {
+      if (this.physics) {
         const geometry = new THREE.BufferGeometry();
         geometry.setAttribute(
           'position',
@@ -754,14 +751,12 @@ class TerrainChunkGenerator {
     physics,
     biomeUvDataTexture,
     atlasTextures,
-    physicsEnabled,
   } = {}) {
     // parameters
     this.procGenInstance = procGenInstance;
     this.physics = physics;
     this.biomeUvDataTexture = biomeUvDataTexture;
     this.atlasTextures = atlasTextures;
-    this.physicsEnabled = physicsEnabled;
 
     // mesh
     this.object = new THREE.Group();
@@ -772,7 +767,6 @@ class TerrainChunkGenerator {
       physics: this.physics,
       biomeUvDataTexture: this.biomeUvDataTexture,
       atlasTextures: this.atlasTextures,
-      physicsEnabled: this.physicsEnabled,
     });
     this.object.add(this.terrainMesh);
   }
@@ -962,7 +956,6 @@ class TerrainChunkGenerator {
 
 export default (e) => {
   const app = useApp();
-  const physics = usePhysics();
   const procGenManager = useProcGenManager();
 
   const renderPosition = app.getComponent('renderPosition') ?? null;
@@ -979,6 +972,10 @@ export default (e) => {
       new THREE.Vector3().fromArray(clipRange[1]),
     );
   }
+
+  const physicsInstance = app.getComponent('physicsInstance');
+  // console.log('land got physics instance', physicsInstance);
+  const physics = physicsInstance !== false ? usePhysics(physicsInstance) : null;
 
   app.name = 'dual-contouring-terrain';
 
@@ -1022,7 +1019,6 @@ export default (e) => {
         physics,
         biomeUvDataTexture,
         atlasTextures,
-        physicsEnabled: !renderPosition,
       });
       tracker = procGenInstance.getChunkTracker({
         lods,
