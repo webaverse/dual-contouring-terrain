@@ -964,7 +964,7 @@ export default (e) => {
   const app = useApp();
   const procGenManager = useProcGenManager();
 
-  const renderPosition = app.getComponent('renderPosition') ?? null;
+  // const renderPosition = app.getComponent('renderPosition') ?? null;
   const lods = app.getComponent('lods') ?? defaultNumNods;
   const minLodRange = app.getComponent('minLodRange') ?? defaultMinLodRange;
 
@@ -979,11 +979,24 @@ export default (e) => {
     );
   }
 
+  /* const componentupdate = e => {
+    const {key, value} = e;
+    console.log('dual contouring terrain component update', {key, value});
+  };
+  app.addEventListener('componentupdate', componentupdate); */
+
   const physicsInstance = app.getComponent('physicsInstance');
   // console.log('land got physics instance', physicsInstance);
   const physics = physicsInstance !== false ? usePhysics(physicsInstance) : null;
 
   app.name = 'dual-contouring-terrain';
+
+  const componentupdate = e => {
+    const {key, value} = e;
+    if (key === 'renderPosition') {
+      tracker.update(localVector.fromArray(value));
+    }
+  };
 
   let live = true;
   let generator = null;
@@ -1048,9 +1061,12 @@ export default (e) => {
       tracker.addEventListener('chunkrelod', chunkrelod);
       // tracker.emitEvents(chunkadd);
 
+      const renderPosition = app.getComponent('renderPosition');
       if (renderPosition) {
         tracker.update(localVector.fromArray(renderPosition));
       }
+      app.addEventListener('componentupdate', componentupdate);
+
       if (wait) {
         // console.log('tracker wait 1');
         await tracker.waitForLoad();
@@ -1086,7 +1102,8 @@ export default (e) => {
   };
 
   useFrame(() => {
-    if (!!tracker && !renderPosition) {
+    // const renderPosition = app.getComponent('renderPosition');
+    if (!!tracker && !app.hasComponent('renderPosition')) {
       const localPlayer = useLocalPlayer();
       localMatrix
         .copy(localPlayer.matrixWorld)
@@ -1101,6 +1118,8 @@ export default (e) => {
     if (tracker) {
       tracker.destroy();
     }
+
+    app.removeEventListener('componentupdate', componentupdate);
   });
 
   return app;
