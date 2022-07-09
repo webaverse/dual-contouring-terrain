@@ -558,6 +558,7 @@ float roughnessFactor = roughness;
     this.physics = physics;
     this.allocator = allocator;
     this.physicsObjects = [];
+    this.physicsObjectToChunkMap = new Map();
 
     // this.lightMapper = lightMapper;
   }
@@ -720,6 +721,7 @@ float roughnessFactor = roughness;
             localVector2
           );
           this.physicsObjects.push(physicsObject);
+          this.physicsObjectToChunkMap.set(physicsObject, chunk);
 
           /* chunk.addEventListener('destroy', );
           const ondestroy = e => {
@@ -731,6 +733,7 @@ float roughnessFactor = roughness;
               this.physicsObjects.indexOf(physicsObject),
               1
             );
+            this.physicsObjectToChunkMap.delete(physicsObject);
           }
           // chunk.addEventListener('destroy', ondestroy);
           tracker.listenForChunkDestroy(chunk, ondestroy);
@@ -776,6 +779,9 @@ class TerrainChunkGenerator {
   }
   getPhysicsObjects() {
     return this.terrainMesh.physicsObjects;
+  }
+  getChunkForPhysicsObject(physicsObject) {
+    return this.terrainMesh.physicsObjectToChunkMap.get(physicsObject);
   }
 
   async generateChunk(chunk) {
@@ -1056,8 +1062,8 @@ export default (e) => {
     })()
   );
 
-  app.getPhysicsObjects = () =>
-    generator ? generator.getPhysicsObjects() : [];
+  app.getPhysicsObjects = () => generator ? generator.getPhysicsObjects() : [];
+  app.getChunkForPhysicsObject = (physicsObject) => generator ? generator.getChunkForPhysicsObject(physicsObject) : null;
 
   app.addEventListener('hit', (e) => {
     generator && tracker && generator.hit(e, tracker);
