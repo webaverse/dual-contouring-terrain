@@ -1103,7 +1103,7 @@ export default (e) => {
 
   useFrame(() => {
     // const renderPosition = app.getComponent('renderPosition');
-    if (!!tracker && !app.hasComponent('renderPosition')) {
+    if (!!tracker && !app.getComponent('renderPosition')) {
       const localPlayer = useLocalPlayer();
       localMatrix
         .copy(localPlayer.matrixWorld)
