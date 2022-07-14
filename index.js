@@ -19,7 +19,7 @@ const {
   useLodder,
 } = metaversefile;
 
-// const baseUrl = import.meta.url.replace(/(\/)[^\/\\]*$/, '$1');
+const baseUrl = import.meta.url.replace(/(\/)[^\/\\]*$/, '$1');
 
 const localVector = new THREE.Vector3();
 const localVector2 = new THREE.Vector3();
@@ -424,6 +424,40 @@ vec4 triplanarNormal(sampler2D Normal, vec3 position, vec3 normal) {
   );
   return vec4(worldNormal, 0.0); */
 }
+
+void setBiome(int biome, out vec4 diffuseSample){
+  // uber shader for biomes
+  if(biome == 4){
+    // diffuseSample *= vec4(0, 0, 1, 1);
+  }else{
+    // diffuseSample = vec4(1, 0, 0, 1);
+  }
+}
+
+vec4 blendBiomes(vec4 samples[4]) {
+  vec4 a = samples[0];
+  vec4 b = samples[1];
+  vec4 c = samples[2];
+  vec4 d = samples[3];
+  float weightSum = vBiomesWeights.x + vBiomesWeights.y + vBiomesWeights.z + vBiomesWeights.w;
+  return (a*vBiomesWeights.x + b*vBiomesWeights.y + c*vBiomesWeights.z + d*vBiomesWeights.w) / weightSum;
+}
+
+vec4 createBlendedBiome(vec4 diffuseSample){
+  vec4 ds = diffuseSample;
+  vec4 diffuseSamples[4];
+  for (int i = 0; i < 4; i++) {
+    diffuseSamples[i] = ds;
+  }
+  setBiome(vBiomes.x, diffuseSamples[0]);
+  setBiome(vBiomes.y, diffuseSamples[1]);
+  setBiome(vBiomes.z, diffuseSamples[2]);
+  setBiome(vBiomes.w, diffuseSamples[3]);
+  vec4 diffuseBlended = blendBiomes(diffuseSamples);
+  ds *= diffuseBlended;
+  return ds;
+}
+
         `);
         shader.fragmentShader = shader.fragmentShader.replace(`#include <bumpmap_pars_fragment>`, `\
 #ifdef USE_BUMPMAP
@@ -492,7 +526,8 @@ float roughnessFactor = roughness;
     // inline sRGB decode (TODO: Remove this code when https://crbug.com/1256340 is solved)
     sampledDiffuseColor = vec4( mix( pow( sampledDiffuseColor.rgb * 0.9478672986 + vec3( 0.0521327014 ), vec3( 2.4 ) ), sampledDiffuseColor.rgb * 0.0773993808, vec3( lessThanEqual( sampledDiffuseColor.rgb, vec3( 0.04045 ) ) ) ), sampledDiffuseColor.w );
   #endif
-  diffuseColor *= sampledDiffuseColor;
+  vec4 blendedBiomeColor = createBlendedBiome(sampledDiffuseColor);
+  diffuseColor *= blendedBiomeColor;
 #endif
 
 // lighting
