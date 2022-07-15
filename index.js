@@ -562,10 +562,7 @@ float roughnessFactor = roughness;
 
     // this.lightMapper = lightMapper;
   }
-  /* async addChunk(chunk, { signal }) {
-    const renderData = await this.getChunkRenderData(chunk, signal);
-    this.drawChunk(chunk, renderData, signal);
-  } */
+
   async getChunkRenderData(chunk, signal) {
     const meshData =
       await this.procGenInstance.dcWorkerManager.generateTerrainChunk(
@@ -595,7 +592,8 @@ float roughnessFactor = roughness;
       return null;
     }
   }
-  drawChunk(chunk, renderData, signal, task, tracker) {
+  drawChunk(chunk, renderData, tracker) {
+    // console.log('draw chunk', chunk.min.toArray().join(','), renderData);
     if (renderData) {
       // non-empty chunk
       const {meshData, geometryBuffer} = renderData;
@@ -685,6 +683,9 @@ float roughnessFactor = roughness;
         geometry.index.update(indexOffset, meshData.indices.length);
       };
       const _handleMesh = () => {
+        /* if (!meshData) {
+          debugger;
+        } */
         localSphere.center
           .set(
             (chunk.x + 0.5) * chunkWorldSize,
@@ -704,10 +705,23 @@ float roughnessFactor = roughness;
           geometryBinding
         );
 
-        const ondestroy = e => {
-          this.allocator.free(geometryBinding);
+        let called = false;
+        const onchunkremove = e => {
+          const {chunk: removeChunk} = e.data;
+          if (chunk.equalsNodeLod(removeChunk)) {
+            if (!called) {
+              called = true;
+            } else {
+              console.warn('double destroy');
+              debugger;
+            }
+
+            this.allocator.free(geometryBinding);
+          
+            tracker.removeEventListener('chunkremove', onchunkremove);
+          }
         };
-        tracker.listenForChunkDestroy(chunk, ondestroy);
+        tracker.addEventListener('chunkremove', onchunkremove);
       };
       _handleMesh();
 
@@ -723,20 +737,28 @@ float roughnessFactor = roughness;
           this.physicsObjects.push(physicsObject);
           this.physicsObjectToChunkMap.set(physicsObject, chunk);
 
-          /* chunk.addEventListener('destroy', );
-          const ondestroy = e => {
-            this.allocator.free(geometryBinding);
-          }; */
-          const ondestroy = e => {
-            this.physics.removeGeometry(physicsObject);
-            this.physicsObjects.splice(
-              this.physicsObjects.indexOf(physicsObject),
-              1
-            );
-            this.physicsObjectToChunkMap.delete(physicsObject);
+          let called = false;
+          const onchunkremove = e => {
+            const {chunk: removeChunk} = e.data;
+            if (chunk.equalsNodeLod(removeChunk)) {
+              if (!called) {
+                called = true;
+              } else {
+                console.warn('double destroy');
+                debugger;
+              }
+
+              this.physics.removeGeometry(physicsObject);
+              this.physicsObjects.splice(
+                this.physicsObjects.indexOf(physicsObject),
+                1
+              );
+              this.physicsObjectToChunkMap.delete(physicsObject);
+
+              tracker.removeEventListener('chunkremove', onchunkremove);
+            }
           }
-          // chunk.addEventListener('destroy', ondestroy);
-          tracker.listenForChunkDestroy(chunk, ondestroy);
+          tracker.addEventListener('chunkremove', onchunkremove);
         }
       };
       _handlePhysics();
@@ -775,7 +797,7 @@ class TerrainChunkGenerator {
   }
 
   getMeshes() {
-    return this.object.children;
+    return this.objectchildren;
   }
   getPhysicsObjects() {
     return this.terrainMesh.physicsObjects;
@@ -784,14 +806,17 @@ class TerrainChunkGenerator {
     return this.terrainMesh.physicsObjectToChunkMap.get(physicsObject);
   }
 
-  async generateChunk(chunk) {
-    const signal = this.bindChunk(chunk);
+  async generateChunk(chunk, {signal = null} = {}) {
+    // const signal = this.bindChunk(chunk);
 
     try {
       await this.terrainMesh.addChunk(chunk, {
         signal,
       });
     } catch (err) {
+      if (err?.isAbortError) {
+        console.log('generate chunk abort', err);
+      }
       if (!err?.isAbortError) {
         console.warn(err);
       }
@@ -826,7 +851,7 @@ class TerrainChunkGenerator {
       };
       newSignal.addEventListener('abort', abortOldChunks); */
 
-      let {newNodes, oldNodes, signal} = task;
+      let {maxLodNode, newNodes, oldNodes, signal} = task;
 
       // newNodes = newNodes.filter(newNode => newNode.lod <= 2);
       // console.log('got new nodes', newNodes, oldNodes);
@@ -839,8 +864,9 @@ class TerrainChunkGenerator {
 
       // console.log('got data', renderDatas);
 
+      // tracker.emitChunkDestroy(maxLodNode);
       for (const oldNode of oldNodes) {
-        // oldNode.destroy();
+        console.log('destroy old node', oldNode);
         tracker.emitChunkDestroy(oldNode);
       }
 
@@ -1049,17 +1075,12 @@ export default (e) => {
         app.add(tracker.debugMesh);
         tracker.debugMesh.updateMatrixWorld();
       }
-      // tracker.name = 'terrain';
-      /* tracker = new LodChunkTracker(generator, {
-      chunkWorldSize,
-      numLods,
-      chunkHeight: chunkWorldSize,
-    }); */
+
       tracker.addEventListener('coordupdate', coordupdate);
-      // tracker.addEventListener('chunkadd', chunkadd);
+      // console.log('listen for chunk data request', tracker);
+      tracker.addEventListener('chunkdatarequest', chunkdatarequest);
+      tracker.addEventListener('chunkadd', chunkadd);
       // tracker.addEventListener('chunkremove', chunkremove);
-      tracker.addEventListener('chunkrelod', chunkrelod);
-      // tracker.emitEvents(chunkadd);
 
       const renderPosition = app.getComponent('renderPosition');
       if (renderPosition) {
@@ -1089,17 +1110,32 @@ export default (e) => {
     const {coord} = e.data;
     generator.terrainMesh.updateCoord(coord);
   };
-  /* const chunkadd = (e) => {
-    const {chunk, waitUntil} = e.data;
-    waitUntil(generator.generateChunk(chunk));
+  const chunkdatarequest = (e) => {
+    const {chunk, waitUntil, signal} = e.data;
+
+    // console.log('lod tracker chunkdatarequest', chunk);
+
+    const loadPromise = (async () => {
+      const renderData = await generator.terrainMesh.getChunkRenderData(
+        chunk,
+        signal
+      );
+      signal.throwIfAborted();
+      return renderData;
+    })();
+    waitUntil(loadPromise);
   };
-  const chunkremove = (e) => {
+  const chunkadd = (e) => {
+    const {renderData, chunk} = e.data;
+    generator.terrainMesh.drawChunk(chunk, renderData, tracker);
+  };
+  /* const chunkremove = (e) => {
     const {chunk} = e.data;
     generator.disposeChunk(chunk);
   }; */
-  const chunkrelod = e => {
+  /* const chunkrelod = e => {
     generator.relodChunksTask(e.data.task, tracker);
-  };
+  }; */
 
   useFrame(() => {
     // const renderPosition = app.getComponent('renderPosition');
