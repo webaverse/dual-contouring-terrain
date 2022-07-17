@@ -1,8 +1,6 @@
 import metaversefile from 'metaversefile';
-// import { useSyncExternalStore } from 'react';
 import * as THREE from 'three';
-// import { terrainVertex, terrainFragment } from './shaders/terrainShader.js';
-import {texturesPerRow, biomeUvDataTexture, mapNames, biomesPngTexturePrefix, biomesKtx2TexturePrefix} from './biomes.js';
+import {texturesPerRow, biomeUvDataTexture, mapNames, biomesKtx2TexturePrefix} from './biomes.js';
 
 const {
   useApp,
