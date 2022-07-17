@@ -104,6 +104,11 @@ class TerrainMesh extends BatchedMesh {
           Type: Uint8Array,
           itemSize: 1,
         },
+        // {
+        //   name: 'peeks',
+        //   Type: Uint8Array,
+        //   itemSize: 1,
+        // },
       ],
       {
         bufferSize,
@@ -686,11 +691,10 @@ float roughnessFactor = roughness;
         /* if (!meshData) {
           debugger;
         } */
-        localSphere.center
-          .set(
-            (chunk.x + 0.5) * chunkWorldSize,
-            (chunk.y + 0.5) * chunkWorldSize,
-            (chunk.z + 0.5) * chunkWorldSize
+        localSphere.center.set(
+            (chunk.min.x + 0.5) * chunkWorldSize,
+            (chunk.min.y + 0.5) * chunkWorldSize,
+            (chunk.min.z + 0.5) * chunkWorldSize
           )
           .applyMatrix4(this.matrixWorld);
         localSphere.radius = chunkRadius;
