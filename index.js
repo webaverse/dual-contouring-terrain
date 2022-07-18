@@ -21,6 +21,7 @@ const {
 
 const localVector = new THREE.Vector3();
 const localVector2 = new THREE.Vector3();
+const localVector4D = new THREE.Vector4();
 const localQuaternion = new THREE.Quaternion();
 const localMatrix = new THREE.Matrix4();
 const localMatrix2 = new THREE.Matrix4();
@@ -35,7 +36,7 @@ const procGenManager = useProcGenManager();
 const chunkWorldSize = procGenManager.chunkSize;
 const terrainSize = chunkWorldSize * 4;
 const chunkRadius = Math.sqrt(chunkWorldSize * chunkWorldSize * 3);
-const defaultNumNods = 3;
+const defaultNumNods = 2;
 const defaultMinLodRange = 2;
 const bufferSize = 4 * 1024 * 1024;
 
@@ -696,10 +697,14 @@ float roughnessFactor = roughness;
           )
           .applyMatrix4(this.matrixWorld);
         localSphere.radius = chunkRadius;
+
+        localVector4D.set(chunk.min.x, chunk.min.y, chunk.min.z, chunkWorldSize);
+
         const geometryBinding = this.allocator.alloc(
           meshData.positions.length,
           meshData.indices.length,
-          localSphere
+          localSphere,
+          localVector4D
         );
         _renderTerrainMeshDataToGeometry(
           meshData,
