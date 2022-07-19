@@ -681,9 +681,6 @@ float roughnessFactor = roughness;
         geometry.index.update(indexOffset, meshData.indices.length);
       };
       const _handleMesh = () => {
-        /* if (!meshData) {
-          debugger;
-        } */
         localSphere.center
           .set(
             (chunk.x + 0.5) * chunkWorldSize,
