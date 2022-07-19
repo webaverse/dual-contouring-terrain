@@ -4,6 +4,7 @@ import {texturesPerRow, biomeUvDataTexture, mapNames, biomesKtx2TexturePrefix} f
 
 const {
   useApp,
+  useCamera,
   useLocalPlayer,
   // useScene,
   // useRenderer,
@@ -725,16 +726,16 @@ float roughnessFactor = roughness;
           geometryBinding
         );
 
-        let called = false;
+        // let called = false;
         const onchunkremove = e => {
           const {chunk: removeChunk} = e.data;
           if (chunk.equalsNodeLod(removeChunk)) {
-            if (!called) {
+            /* if (!called) {
               called = true;
             } else {
               console.warn('double destroy');
               debugger;
-            }
+            } */
 
             this.allocator.free(geometryBinding);
           
@@ -757,22 +758,21 @@ float roughnessFactor = roughness;
           this.physicsObjects.push(physicsObject);
           this.physicsObjectToChunkMap.set(physicsObject, chunk);
 
-          let called = false;
+          // let called = false;
           const onchunkremove = e => {
             const {chunk: removeChunk} = e.data;
             if (chunk.equalsNodeLod(removeChunk)) {
-              if (!called) {
+              /* if (!called) {
                 called = true;
               } else {
                 console.warn('double destroy');
                 debugger;
-              }
+              } */
 
               this.physics.removeGeometry(physicsObject);
-              this.physicsObjects.splice(
-                this.physicsObjects.indexOf(physicsObject),
-                1
-              );
+
+              const index = this.physicsObjects.indexOf(physicsObject);
+              this.physicsObjects.splice(index, 1);
               this.physicsObjectToChunkMap.delete(physicsObject);
 
               tracker.removeEventListener('chunkremove', onchunkremove);
@@ -829,8 +829,6 @@ class TerrainChunkGenerator {
   }
 
   async generateChunk(chunk, {signal = null} = {}) {
-    // const signal = this.bindChunk(chunk);
-
     try {
       await this.terrainMesh.addChunk(chunk, {
         signal,
@@ -860,23 +858,7 @@ class TerrainChunkGenerator {
     // console.log('relod chunk', task);
 
     try {
-      /* const oldAbortControllers = oldChunks.map(oldChunk => {
-        return oldChunk.binding.abortController;
-      }); */
-      // const oldAbortController = oldChunk.binding.abortController;
-      // const newSignal = this.bindChunk(newChunk);
-
-      /* const abortOldChunks = e => {
-        for (const oldAbortController of oldAbortControllers) {
-          oldAbortController.abort(abortError);
-        }
-      };
-      newSignal.addEventListener('abort', abortOldChunks); */
-
       let {maxLodNode, newNodes, oldNodes, signal} = task;
-
-      // newNodes = newNodes.filter(newNode => newNode.lod <= 2);
-      // console.log('got new nodes', newNodes, oldNodes);
 
       const renderDatas = await Promise.all(newNodes.map(newNode => this.terrainMesh.getChunkRenderData(
         newNode,
@@ -884,24 +866,11 @@ class TerrainChunkGenerator {
       )));
       signal.throwIfAborted();
 
-      // console.log('got data', renderDatas);
-
-      // tracker.emitChunkDestroy(maxLodNode);
       for (const oldNode of oldNodes) {
         console.log('destroy old node', oldNode);
         tracker.emitChunkDestroy(oldNode);
       }
 
-      /* for (const oldNode of oldNodes) {
-        const liveChunk = liveChunks.find(chunk => chunk.min.equals(oldNode.min));
-        if (liveChunk) {
-          liveChunk.destroy();
-          liveChunks.splice(liveChunks.indexOf(liveChunk), 1);
-        }
-      } */
-      /* for (const oldNode of oldNodes) {
-        oldNode.destroy();
-      } */
       for (let i = 0; i < newNodes.length; i++) {
         const newNode = newNodes[i];
         const renderData = renderDatas[i];
@@ -1010,12 +979,9 @@ class TerrainChunkGenerator {
 
 export default (e) => {
   const app = useApp();
+  const camera = useCamera();
   const procGenManager = useProcGenManager();
 
-  // app.position.add(appTransform);
-  // app.updateMatrixWorld();
-
-  // const renderPosition = app.getComponent('renderPosition') ?? null;
   const lods = app.getComponent('lods') ?? defaultNumNods;
   const minLodRange = app.getComponent('minLodRange') ?? defaultMinLodRange;
 
@@ -1030,14 +996,7 @@ export default (e) => {
     );
   }
 
-  /* const componentupdate = e => {
-    const {key, value} = e;
-    console.log('dual contouring terrain component update', {key, value});
-  };
-  app.addEventListener('componentupdate', componentupdate); */
-
   const physicsInstance = app.getComponent('physicsInstance');
-  // console.log('land got physics instance', physicsInstance);
   const physics = physicsInstance !== false ? usePhysics(physicsInstance) : null;
 
   app.name = 'dual-contouring-terrain';
@@ -1070,6 +1029,8 @@ export default (e) => {
       );
       if (!live) return;
 
+      const renderPosition = app.getComponent('renderPosition');
+
       const atlasTextures = {};
       for (let i = 0; i < mapNames.length; i++) {
         // atlasTexturesArray[i].needsUpdate = true;
@@ -1097,6 +1058,7 @@ export default (e) => {
         lods,
         minLodRange,
         trackY: true,
+        sort: !renderPosition,
         debug,
       });
       if (debug) {
@@ -1104,13 +1066,33 @@ export default (e) => {
         tracker.debugMesh.updateMatrixWorld();
       }
 
-      tracker.addEventListener('coordupdate', coordupdate);
-      // console.log('listen for chunk data request', tracker);
+      /* const coordupdate = (e) => {
+        debugger;
+        const {coord} = e.data;
+        generator.terrainMesh.updateCoord(coord);
+      };
+      tracker.addEventListener('coordupdate', coordupdate); */
+
+      const chunkdatarequest = (e) => {
+        const {chunk, waitUntil, signal} = e.data;
+    
+        const loadPromise = (async () => {
+          const renderData = await generator.terrainMesh.getChunkRenderData(
+            chunk,
+            signal
+          );
+          signal.throwIfAborted();
+          return renderData;
+        })();
+        waitUntil(loadPromise);
+      };
+      const chunkadd = (e) => {
+        const {renderData, chunk} = e.data;
+        generator.terrainMesh.drawChunk(chunk, renderData, tracker);
+      };
       tracker.addEventListener('chunkdatarequest', chunkdatarequest);
       tracker.addEventListener('chunkadd', chunkadd);
-      // tracker.addEventListener('chunkremove', chunkremove);
 
-      const renderPosition = app.getComponent('renderPosition');
       if (renderPosition) {
         tracker.update(localVector.fromArray(renderPosition));
       }
@@ -1134,46 +1116,14 @@ export default (e) => {
     generator && tracker && generator.hit(e, tracker);
   });
 
-  const coordupdate = (e) => {
-    const {coord} = e.data;
-    generator.terrainMesh.updateCoord(coord);
-  };
-  const chunkdatarequest = (e) => {
-    const {chunk, waitUntil, signal} = e.data;
-
-    // console.log('lod tracker chunkdatarequest', chunk);
-
-    const loadPromise = (async () => {
-      const renderData = await generator.terrainMesh.getChunkRenderData(
-        chunk,
-        signal
-      );
-      signal.throwIfAborted();
-      return renderData;
-    })();
-    waitUntil(loadPromise);
-  };
-  const chunkadd = (e) => {
-    const {renderData, chunk} = e.data;
-    generator.terrainMesh.drawChunk(chunk, renderData, tracker, app.worldMatrix);
-  };
-  /* const chunkremove = (e) => {
-    const {chunk} = e.data;
-    generator.disposeChunk(chunk);
-  }; */
-  /* const chunkrelod = e => {
-    generator.relodChunksTask(e.data.task, tracker);
-  }; */
-
   useFrame(() => {
-    // const renderPosition = app.getComponent('renderPosition');
     if (!!tracker && !app.getComponent('renderPosition')) {
       const localPlayer = useLocalPlayer();
       localMatrix
         .copy(localPlayer.matrixWorld)
         .premultiply(localMatrix2.copy(app.matrixWorld).invert())
         .decompose(localVector, localQuaternion, localVector2);
-      tracker.update(localVector);
+      tracker.update(localVector, localQuaternion, camera.projectionMatrix);
     }
   });
 
