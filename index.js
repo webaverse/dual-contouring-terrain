@@ -115,6 +115,7 @@ class TerrainMesh extends BatchedMesh {
       {
         bufferSize,
         boundingType: 'sphere',
+        occlusionCulling : true
       }
     );
     const { geometry } = allocator;
@@ -713,11 +714,11 @@ float roughnessFactor = roughness;
         const geometryBinding = this.allocator.alloc(
           meshData.positions.length,
           meshData.indices.length,
-          meshData.peeks,
           localSphere,
           localVector3D,
           localVector3D2,
-          this.appMatrix
+          this.appMatrix,
+          meshData.peeks
         );
         // console.log(localVector3D);
         _renderTerrainMeshDataToGeometry(
