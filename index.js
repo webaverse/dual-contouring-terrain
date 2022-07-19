@@ -21,7 +21,8 @@ const {
 
 const localVector = new THREE.Vector3();
 const localVector2 = new THREE.Vector3();
-const localVector4D = new THREE.Vector4();
+const localVector3D = new THREE.Vector3();
+const localVector3D2 = new THREE.Vector3();
 const localQuaternion = new THREE.Quaternion();
 const localMatrix = new THREE.Matrix4();
 const localMatrix2 = new THREE.Matrix4();
@@ -60,6 +61,7 @@ class TerrainMesh extends BatchedMesh {
     physics,
     biomeUvDataTexture,
     atlasTextures,
+    appMatrix
   }) {
     const allocator = new GeometryAllocator(
       [
@@ -156,7 +158,8 @@ class TerrainMesh extends BatchedMesh {
       // roughness: 1,
       roughnessMap: new THREE.Texture(),
       aoMap: new THREE.Texture(),
-      // transparent: true,
+      // wireframe: true,
+      transparent: true,
       onBeforeCompile: (shader) => {
         for (const k in material.uniforms) {
           shader.uniforms[k] = material.uniforms[k];
@@ -503,7 +506,7 @@ float roughnessFactor = roughness;
 {
   // diffuseColor.rgb *= 0.3 + 0.7 * vLightValue;
   diffuseColor.rgb *= vLightValue;
-  diffuseColor.a = 1.;
+  diffuseColor.a = 0.3;
 }
         `);
         shader.fragmentShader = shader.fragmentShader.replace(`#include <aomap_fragment>`, `\
@@ -563,6 +566,7 @@ float roughnessFactor = roughness;
     this.allocator = allocator;
     this.physicsObjects = [];
     this.physicsObjectToChunkMap = new Map();
+    this.appMatrix = appMatrix;
 
     // this.lightMapper = lightMapper;
   }
@@ -596,7 +600,7 @@ float roughnessFactor = roughness;
       return null;
     }
   }
-  drawChunk(chunk, renderData, tracker) {
+  drawChunk(chunk, renderData, tracker, appMatrix) {
     // console.log('draw chunk', chunk.min.toArray().join(','), renderData);
     if (renderData) {
       // non-empty chunk
@@ -690,22 +694,31 @@ float roughnessFactor = roughness;
         /* if (!meshData) {
           debugger;
         } */
+        const chunkSize = chunkWorldSize * chunk.lod;
+
         localSphere.center.set(
-            (chunk.min.x + 0.5) * chunkWorldSize,
-            (chunk.min.y + 0.5) * chunkWorldSize,
-            (chunk.min.z + 0.5) * chunkWorldSize
+            (chunk.min.x + 0.5) * chunkSize,
+            (chunk.min.y + 0.5) * chunkSize,
+            (chunk.min.z + 0.5) * chunkSize
           )
           .applyMatrix4(this.matrixWorld);
         localSphere.radius = chunkRadius;
 
-        localVector4D.set(chunk.min.x, chunk.min.y, chunk.min.z, chunkWorldSize);
+        localVector3D.set(chunk.min.x, chunk.min.y, chunk.min.z).multiplyScalar(chunkSize); // min
+        localVector3D2.set(chunk.min.x, chunk.min.y, chunk.min.z).addScalar(chunk.lod).multiplyScalar(chunkSize); // max
+
+        // console.log(localVector3D.x + ", " + localVector3D2.x);
 
         const geometryBinding = this.allocator.alloc(
           meshData.positions.length,
           meshData.indices.length,
+          meshData.peeks,
           localSphere,
-          localVector4D
+          localVector3D,
+          localVector3D2,
+          this.appMatrix
         );
+        // console.log(localVector3D);
         _renderTerrainMeshDataToGeometry(
           meshData,
           this.allocator.geometry,
@@ -783,6 +796,7 @@ class TerrainChunkGenerator {
     physics,
     biomeUvDataTexture,
     atlasTextures,
+    appMatrix
   } = {}) {
     // parameters
     this.procGenInstance = procGenInstance;
@@ -799,6 +813,7 @@ class TerrainChunkGenerator {
       physics: this.physics,
       biomeUvDataTexture: this.biomeUvDataTexture,
       atlasTextures: this.atlasTextures,
+      appMatrix
     });
     this.object.add(this.terrainMesh);
   }
@@ -839,7 +854,7 @@ class TerrainChunkGenerator {
       chunk.disposeStack = new Error().stack;
     }
   } */
-  async relodChunksTask(task, tracker) {
+  async relodChunksTask(task, tracker, appMatrix) {
     // console.log('got task', task);
     // const {oldChunks, newChunk, signal} = task;
     // console.log('relod chunk', task);
@@ -890,7 +905,7 @@ class TerrainChunkGenerator {
       for (let i = 0; i < newNodes.length; i++) {
         const newNode = newNodes[i];
         const renderData = renderDatas[i];
-        this.terrainMesh.drawChunk(newNode, renderData, signal, task, tracker);
+        this.terrainMesh.drawChunk(newNode, renderData, signal, task, tracker, appMatrix);
       }
 
       task.commit();
@@ -997,6 +1012,9 @@ export default (e) => {
   const app = useApp();
   const procGenManager = useProcGenManager();
 
+  // app.position.add(appTransform);
+  // app.updateMatrixWorld();
+
   // const renderPosition = app.getComponent('renderPosition') ?? null;
   const lods = app.getComponent('lods') ?? defaultNumNods;
   const minLodRange = app.getComponent('minLodRange') ?? defaultMinLodRange;
@@ -1066,11 +1084,14 @@ export default (e) => {
 
       const procGenInstance = procGenManager.getInstance(seed, clipRange);
 
+      const appMatrix = app.matrixWorld;
+
       generator = new TerrainChunkGenerator({
         procGenInstance,
         physics,
         biomeUvDataTexture,
         atlasTextures,
+        appMatrix
       });
       tracker = procGenInstance.getChunkTracker({
         lods,
@@ -1134,7 +1155,7 @@ export default (e) => {
   };
   const chunkadd = (e) => {
     const {renderData, chunk} = e.data;
-    generator.terrainMesh.drawChunk(chunk, renderData, tracker);
+    generator.terrainMesh.drawChunk(chunk, renderData, tracker, app.worldMatrix);
   };
   /* const chunkremove = (e) => {
     const {chunk} = e.data;
