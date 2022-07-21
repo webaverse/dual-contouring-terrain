@@ -115,7 +115,7 @@ class TerrainMesh extends BatchedMesh {
       {
         bufferSize,
         boundingType: 'sphere',
-        occlusionCulling : true
+        hasOcclusionCulling : true
       }
     );
     const { geometry } = allocator;
