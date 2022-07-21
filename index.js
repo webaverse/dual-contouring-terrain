@@ -106,11 +106,11 @@ class TerrainMesh extends BatchedMesh {
           Type: Uint8Array,
           itemSize: 1,
         },
-        // {
-        //   name: 'peeks',
-        //   Type: Uint8Array,
-        //   itemSize: 1,
-        // },
+        {
+          name: 'peeks',
+          Type: Uint8Array,
+          itemSize: 1,
+        },
       ],
       {
         bufferSize,
