@@ -559,8 +559,6 @@ float roughnessFactor = roughness;
     this.physicsObjects = [];
     this.physicsObjectToChunkMap = new Map();
     this.appMatrix = appMatrix;
-
-    // this.lightMapper = lightMapper;
   }
 
   async getChunkRenderData(chunk, signal) {
@@ -965,12 +963,17 @@ export default e => {
   // trackers
   const procGenInstance = procGenManager.getInstance(seed, clipRange);
 
-  /* const lightMapper = procGenInstance.getLightMapper({
-    size: procGenManager.chunkSize,
-    debug,
+  const lightMapper = procGenInstance.getLightMapper({
+    size: new THREE.Vector3(
+      5,
+      7,
+      5
+    ),
+    debug: true,
   });
-  app.add(lightMapper.debugMesh);
-  lightMapper.debugMesh.updateMatrixWorld(); */
+  // XXX unlock this
+  // app.add(lightMapper.debugMesh);
+  // lightMapper.debugMesh.updateMatrixWorld();
 
   // update functions
   const componentupdate = e => {
@@ -1096,9 +1099,10 @@ export default e => {
         .copy(localPlayer.matrixWorld)
         .premultiply(localMatrix2.copy(app.matrixWorld).invert())
         .decompose(localVector, localQuaternion, localVector2);
-      tracker.update(localVector, localQuaternion, camera.projectionMatrix);
-      
-      // lightMapper.update(localPlayer.position);
+
+      tracker.update(localVector);
+
+      lightMapper.update(localVector);
     }
   });
 
