@@ -139,7 +139,7 @@ class TerrainMesh extends BatchedMesh {
       // debug: true,
     });
     lightMapper.addEventListener('coordupdate', e => {
-      const {coord} = e.data;
+      const {coord} = e;
       // console.log('coord update', coord.toArray().join(','));
       material.uniforms.uLightBasePosition.value.copy(coord);
       material.uniforms.uLightBasePosition.needsUpdate = true;
@@ -705,23 +705,15 @@ float roughnessFactor = roughness;
           geometryBinding
         );
 
-        // let called = false;
-        const onchunkremove = e => {
-          const {chunk: removeChunk} = e.data;
-          if (chunk.equalsNodeLod(removeChunk)) {
-            /* if (!called) {
-              called = true;
-            } else {
-              console.warn('double destroy');
-              debugger;
-            } */
-
+        const onchunkremove = () => {
+          // const {chunk: removeChunk} = e;
+          // if (chunk.equalsNodeLod(removeChunk)) {
             this.allocator.free(geometryBinding);
           
-            tracker.removeEventListener('chunkremove', onchunkremove);
-          }
+            tracker.offChunkRemove(chunk, onchunkremove);
+          // }
         };
-        tracker.addEventListener('chunkremove', onchunkremove);
+        tracker.onChunkRemove(chunk, onchunkremove);
       };
       _handleMesh();
 
@@ -737,27 +729,19 @@ float roughnessFactor = roughness;
           this.physicsObjects.push(physicsObject);
           this.physicsObjectToChunkMap.set(physicsObject, chunk);
 
-          // let called = false;
-          const onchunkremove = e => {
-            const {chunk: removeChunk} = e.data;
-            if (chunk.equalsNodeLod(removeChunk)) {
-              /* if (!called) {
-                called = true;
-              } else {
-                console.warn('double destroy');
-                debugger;
-              } */
-
+          const onchunkremove = () => {
+            // const {chunk: removeChunk} = e;
+            // if (chunk.equalsNodeLod(removeChunk)) {
               this.physics.removeGeometry(physicsObject);
 
               const index = this.physicsObjects.indexOf(physicsObject);
               this.physicsObjects.splice(index, 1);
               this.physicsObjectToChunkMap.delete(physicsObject);
 
-              tracker.removeEventListener('chunkremove', onchunkremove);
-            }
+              tracker.offChunkRemove(chunk, onchunkremove);
+            // }
           }
-          tracker.addEventListener('chunkremove', onchunkremove);
+          tracker.onChunkRemove(chunk, onchunkremove);
         }
       };
       _handlePhysics();
@@ -805,7 +789,7 @@ class TerrainChunkGenerator {
     return this.terrainMesh.physicsObjectToChunkMap.get(physicsObject);
   }
 
-  async generateChunk(chunk, {signal = null} = {}) {
+  /* async generateChunk(chunk, {signal = null} = {}) {
     try {
       await this.terrainMesh.addChunk(chunk, {
         signal,
@@ -818,8 +802,8 @@ class TerrainChunkGenerator {
         console.warn(err);
       }
     }
-  }
-  async relodChunksTask(task, tracker) {
+  } */
+  /* async relodChunksTask(task, tracker) {
     try {
       let {maxLodNode, newNodes, oldNodes, signal} = task;
 
@@ -850,7 +834,7 @@ class TerrainChunkGenerator {
         // console.warn(err);
       }
     }
-  }
+  } */
 
   bindChunk(chunk) {
     const abortController = new AbortController();
@@ -1028,13 +1012,13 @@ export default (e) => {
 
       /* const coordupdate = (e) => {
         debugger;
-        const {coord} = e.data;
+        const {coord} = e;
         generator.terrainMesh.updateCoord(coord);
       };
       tracker.addEventListener('coordupdate', coordupdate); */
 
       const chunkdatarequest = (e) => {
-        const {chunk, waitUntil, signal} = e.data;
+        const {chunk, waitUntil, signal} = e;
     
         const loadPromise = (async () => {
           const renderData = await generator.terrainMesh.getChunkRenderData(
@@ -1047,11 +1031,13 @@ export default (e) => {
         waitUntil(loadPromise);
       };
       const chunkadd = (e) => {
-        const {renderData, chunk} = e.data;
+        const {renderData, chunk} = e;
         generator.terrainMesh.drawChunk(chunk, renderData, tracker);
       };
-      tracker.addEventListener('chunkdatarequest', chunkdatarequest);
-      tracker.addEventListener('chunkadd', chunkadd);
+      tracker.onChunkDataRequest(chunkdatarequest);
+      tracker.onChunkAdd(chunkadd);
+      // tracker.addEventListener('chunkdatarequest', chunkdatarequest);
+      // tracker.addEventListener('chunkadd', chunkadd);
 
       if (renderPosition) {
         tracker.update(localVector.fromArray(renderPosition));
