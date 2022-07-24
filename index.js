@@ -1029,7 +1029,7 @@ export default e => {
         lods,
         minLodRange,
         trackY: true,
-        sort: !renderPosition,
+        // sort: !renderPosition,
         debug,
       });
       if (debug) {
