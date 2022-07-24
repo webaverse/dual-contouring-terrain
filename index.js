@@ -161,7 +161,7 @@ class TerrainMesh extends BatchedMesh {
       roughnessMap: new THREE.Texture(),
       aoMap: new THREE.Texture(),
       // wireframe: true,
-      // transparent: true,
+      transparent: true,
       onBeforeCompile: (shader) => {
         for (const k in material.uniforms) {
           shader.uniforms[k] = material.uniforms[k];
@@ -508,7 +508,7 @@ float roughnessFactor = roughness;
 {
   // diffuseColor.rgb *= 0.3 + 0.7 * vLightValue;
   diffuseColor.rgb *= vLightValue;
-  diffuseColor.a = 1.0;
+  diffuseColor.a = 0.3;
 }
         `);
         shader.fragmentShader = shader.fragmentShader.replace(`#include <aomap_fragment>`, `\
