@@ -139,16 +139,6 @@ class TerrainMesh extends BatchedMesh {
     )
     grassNormal.wrapS = grassNormal.wrapT = THREE.RepeatWrapping */
 
-    /* const lightMapper = procGenInstance.getLightMapper({
-      // debug: true,
-    });
-    lightMapper.addEventListener('coordupdate', e => {
-      const {coord} = e;
-      // console.log('coord update', coord.toArray().join(','));
-      material.uniforms.uLightBasePosition.value.copy(coord);
-      material.uniforms.uLightBasePosition.needsUpdate = true;
-    }); */
-
     const material = new THREE.MeshStandardMaterial({
       map: new THREE.Texture(),
       normalMap: new THREE.Texture(),
@@ -769,10 +759,10 @@ float roughnessFactor = roughness;
       _handlePhysics();
     }
   }
-  updateCoord(min1xCoord) {
+  /* updateCoord(min1xCoord) {
     // XXX this should be done in a separate app
     // this.lightMapper.updateCoord(min1xCoord);
-  }
+  } */
 }
 
 class TerrainChunkGenerator {
@@ -948,7 +938,7 @@ class TerrainChunkGenerator {
   }
 }
 
-export default (e) => {
+export default e => {
   const app = useApp();
   const camera = useCamera();
   const procGenManager = useProcGenManager();
@@ -972,6 +962,17 @@ export default (e) => {
 
   app.name = 'dual-contouring-terrain';
 
+  // trackers
+  const procGenInstance = procGenManager.getInstance(seed, clipRange);
+
+  /* const lightMapper = procGenInstance.getLightMapper({
+    size: procGenManager.chunkSize,
+    debug,
+  });
+  app.add(lightMapper.debugMesh);
+  lightMapper.debugMesh.updateMatrixWorld(); */
+
+  // update functions
   const componentupdate = e => {
     const {key, value} = e;
     if (key === 'renderPosition') {
@@ -979,6 +980,7 @@ export default (e) => {
     }
   };
 
+  // load
   let live = true;
   let generator = null;
   let tracker = null;
@@ -1013,8 +1015,6 @@ export default (e) => {
         // compressedTexture.premultiplyAlpha = true;
         atlasTextures[mapNames[i]] = compressedTexture;
       }
-
-      const procGenInstance = procGenManager.getInstance(seed, clipRange);
 
       const appMatrix = app.matrixWorld;
 
@@ -1097,6 +1097,8 @@ export default (e) => {
         .premultiply(localMatrix2.copy(app.matrixWorld).invert())
         .decompose(localVector, localQuaternion, localVector2);
       tracker.update(localVector, localQuaternion, camera.projectionMatrix);
+      
+      // lightMapper.update(localPlayer.position);
     }
   });
 
